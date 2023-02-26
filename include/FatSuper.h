@@ -1,0 +1,94 @@
+#ifndef FAT_SUPER_H
+#define FAT_SUPER_H
+
+#include "FixedLengthString.h"
+#include "UnalignedInt.h"
+#include "ByteBlob.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <cstddef>
+#include <cstring>
+
+class FatSuper {
+public:
+	FatSuper() = default;
+
+	void SetTotalSectorCount(uint32_t count) {
+		_totalSectorCount = count;
+	}
+
+	void SetSectorsPerFat(uint32_t count) {
+		_sectorsPerFat = count;
+	}
+
+	void SetBootCode(const uint8_t *data, size_t size,
+			 size_t entryPoint = 0) {
+		size = std::min(size, sizeof(_bootCode));
+
+		memcpy(&_bootCode, data, size);
+
+		_introJump.SetEntryPoint(entryPoint);
+	}
+
+	void SetOEMName(const char *name) {
+		_oemName.Set(name);
+	}
+private:
+	struct {
+	public:
+		void SetEntryPoint(size_t entry) {
+			entry = std::min(entry, sizeof(_bootCode));
+
+			_jump = 0xEB;
+			_codeOffset = offsetof(FatSuper, _bootCode) - 2 + entry;
+			_nop = 0x90;
+		}
+	private:
+		uint8_t _jump;
+		uint8_t _codeOffset;
+		uint8_t _nop;
+	} _introJump;
+
+	FixedLengthString<8, ' '> _oemName;
+
+	/* DOS 2.0 BPB */
+	UnalignedInt<uint16_t> _bytesPerSector;
+	uint8_t _sectorsPerCluster;
+	UnalignedInt<uint16_t> _numReservedSectors;
+	uint8_t _numFats;
+	ByteBlob<4> _unused0;
+	uint8_t _mediaDescriptor;
+	ByteBlob<2> _unused1;
+
+	/* DOS 3.31 BPB */
+	UnalignedInt<uint16_t> _sectorsPerTrack;
+	UnalignedInt<uint16_t> _headsPerDisk;
+	ByteBlob<4> _unused2;
+	UnalignedInt<uint32_t> _totalSectorCount;
+
+	/* FAT32 BPB */
+	UnalignedInt<uint32_t> _sectorsPerFat;
+	UnalignedInt<uint16_t> _mirrorFlags;
+	UnalignedInt<uint16_t> _version;
+	UnalignedInt<uint32_t> _rootDirIndex;
+	UnalignedInt<uint16_t> _fsInfoIndex;
+	UnalignedInt<uint16_t> _bootSecCopyIndex;
+	ByteBlob<12> _unused3;
+	uint8_t _physDriveNum;
+	ByteBlob<1> _wtf1;
+	uint8_t _extBootSignature;
+	UnalignedInt<uint32_t> _volumeId;
+	FixedLengthString<11, ' '> _label;
+	FixedLengthString<8, ' '> _fsName;
+
+	/* boot sector code */
+	ByteBlob<420> _bootCode;
+
+	/* magic signature */
+	UnalignedInt<uint16_t> _bootSignature;
+};
+
+static_assert(sizeof(FatSuper) == 512);
+
+#endif /* FAT_SUPER_H */

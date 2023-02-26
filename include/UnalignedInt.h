@@ -8,6 +8,10 @@
 template<typename T>
 class UnalignedInt {
 public:
+	UnalignedInt() {
+		Set(0);
+	}
+
 	UnalignedInt(T value) {
 		Set(value);
 	}
