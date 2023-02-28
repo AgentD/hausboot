@@ -1,5 +1,6 @@
 #include "MBRTable.h"
 #include "bios.h"
+#include "video.h"
 
 #include <cstdint>
 
@@ -10,7 +11,7 @@ static const char *msgNoMagic = "VBR boot sector has no magic number!";
 
 uint16_t driveNumber;
 
-static auto *vidmem = (uint16_t *)0xB8000;
+static auto *vidmem = (VidmemEntry *)0xB8000;
 static auto *bootSector = (uint16_t *)0x7C00;
 static auto *mbr = (uint16_t *)0x0600;
 static auto *mbrStackPtr = (uint16_t *)0x7E00;
@@ -18,11 +19,14 @@ static auto *partTable = (MBRTable *)(0x0600 + 446);
 
 [[noreturn]] static void DumpMessageAndHang(const char *msg)
 {
-	for (unsigned int i = 0; i < 80 * 25; ++i)
-		vidmem[i] = 0x0700;
+	for (unsigned int i = 0; i < 80 * 25; ++i) {
+		vidmem[i].color.Set(Color::LightGray);
+		vidmem[i].character = 0;
+	}
 
-	for (unsigned int i = 0; msg[i] != '\0'; ++i)
-		vidmem[i] |= msg[i];
+	for (unsigned int i = 0; msg[i] != '\0'; ++i) {
+		vidmem[i].character = msg[i];
+	}
 
 	for (;;) {
 		__asm__ __volatile__ ("hlt");
