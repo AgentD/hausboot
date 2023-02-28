@@ -62,6 +62,7 @@ static bool ReadAll(const char *filename, std::vector<uint8_t> &out,
 static void *disk = nullptr;
 static uint64_t diskSize = 0;
 static std::vector<uint8_t> vbr;
+static std::vector<uint8_t> stage2;
 
 static void InstallVBR(void)
 {
@@ -69,17 +70,61 @@ static void InstallVBR(void)
 
 	super->SetBootCode(vbr.data(), vbr.size());
 
+	// Disable backup copy of the boot sector, and make sure
+	// the FS Info is right after the boot sector
+	super->SetBackupIndex(0);
+
+	auto idx = super->FsInfoIndex();
+	if (idx != 1) {
+		std::cout << "Relocating FS Info block from "
+			  << idx << std::endl;
+
+		memmove((uint8_t *)disk + 512,
+			(uint8_t *)disk + 512 * idx,
+			512);
+
+		super->SetFsInfoIndex(1);
+	}
+
 	// :-)
 	super->SetOEMName("Goliath");
+}
+
+static uint64_t Stage2SpaceAvailable(void)
+{
+	auto *super = static_cast<FatSuper *>(disk);
+
+	uint64_t secs = super->ReservedSectors();
+
+	if (secs <= 2)
+		return 0;
+
+	uint64_t space = secs * super->BytesPerSector();
+	if (space >= diskSize)
+		return 0;
+
+	return space;
 }
 
 int main(int argc, char **argv)
 {
 	// process arguments
 	const char *vbrFile = nullptr;
+	const char *stage2File = nullptr;
 	const char *outFile = nullptr;
 
 	for (int i = 1; i < argc; ++i) {
+		if (!strcmp(argv[i], "--stage2")) {
+			if ((i + 1) >= argc) {
+				std::cerr << "Missing argument for `" << argv[i]
+					  << "`" << std::endl;
+				return EXIT_FAILURE;
+			}
+
+			stage2File = argv[++i];
+			continue;
+		}
+
 		if (!strcmp(argv[i], "-v")) {
 			if (argv[i][2] != '\0') {
 				vbrFile = argv[i] + 2;
@@ -153,6 +198,23 @@ int main(int argc, char **argv)
 
 	// install the volume boot record
 	InstallVBR();
+
+	// Install second stage boot loader
+	if (stage2File != nullptr) {
+		auto max = Stage2SpaceAvailable();
+
+		if (!ReadAll(stage2File, stage2, max)) {
+			munmap(disk, diskSize);
+			close(fd);
+			return EXIT_FAILURE;
+		}
+
+		memcpy((uint8_t *)disk + 2 * 512,
+		       stage2.data(), stage2.size());
+
+		memset((uint8_t *)disk + 2 * 512 + stage2.size(),
+		       0, max - stage2.size());
+	}
 
 	// cleanup
 	munmap(disk, diskSize);

@@ -34,6 +34,30 @@ public:
 	void SetOEMName(const char *name) {
 		_oemName.Set(name);
 	}
+
+	uint16_t BytesPerSector() const {
+		return _bytesPerSector.Read();
+	}
+
+	uint16_t ReservedSectors() const {
+		return _numReservedSectors.Read();
+	}
+
+	uint16_t FsInfoIndex() const {
+		return _fsInfoIndex.Read();
+	}
+
+	void SetFsInfoIndex(uint16_t value) {
+		_fsInfoIndex.Set(value);
+	}
+
+	uint16_t BackupIndex() const {
+		return _bootSecCopyIndex.Read();
+	}
+
+	void SetBackupIndex(uint16_t value) {
+		_bootSecCopyIndex.Set(value);
+	}
 private:
 	struct {
 	public:

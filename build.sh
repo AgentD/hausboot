@@ -26,6 +26,13 @@ $CXX $CXXFLAGS_BOOT -c "vbr.cpp" -o "out/vbr.o"
 $CXX -m16 -O2 -Osize -T "vbr.ld" -o "out/vbr" \
      -ffreestanding -nostdlib "out/vbr.o" "out/vbr_ABI.o"
 
+echo "***** Compiling Stage 2 *****"
+
+$CXX $CXXFLAGS_BOOT -c "stage2.cpp" -o "out/stage2.o"
+
+$CXX -m16 -O2 -Osize -T "stage2.ld" -o "out/stage2" \
+     -ffreestanding -nostdlib "out/stage2.o"
+
 echo "***** Compiling installfat *****"
 
 $CXX $CXXFLAGS "installfat.cpp" -o "out/installfat"
@@ -34,7 +41,7 @@ echo "***** Building FAT Partition *****"
 
 dd if=/dev/zero of=./out/fatpart.img bs=1M count=40
 mkfs.fat -F 32 "./out/fatpart.img"
-./out/installfat -v "out/vbr" -o "out/fatpart.img"
+./out/installfat -v "out/vbr" -o "out/fatpart.img" --stage2 "out/stage2"
 
 echo "***** Building Disk *****"
 
