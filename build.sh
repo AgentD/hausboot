@@ -1,7 +1,9 @@
 #!/bin/sh
 
 CXX="g++"
+AS="as"
 
+ASFLAGS="--32"
 CXXFLAGS="-I./include -std=c++17 -Wall -Wextra"
 CXXFLAGS_BOOT="$CXXFLAGS -m16 -Wno-main -ffreestanding"
 CXXFLAGS_BOOT="$CXXFLAGS_BOOT -fno-exceptions -fno-rtti -O2 -Os"
@@ -10,17 +12,19 @@ mkdir -p out
 
 echo "***** Compiling MBR *****"
 
+$AS $ASFLAGS "mbr_ABI.S" -o "out/mbr_ABI.o"
 $CXX $CXXFLAGS_BOOT -c "mbr.cpp" -o "out/mbr.o"
 
 $CXX -m16 -O2 -Osize -T "mbr.ld" -o "out/mbr" \
-     -ffreestanding -nostdlib "out/mbr.o"
+     -ffreestanding -nostdlib "out/mbr.o" "out/mbr_ABI.o"
 
 echo "***** Compiling VBR *****"
 
+$AS $ASFLAGS "vbr_ABI.S" -o "out/vbr_ABI.o"
 $CXX $CXXFLAGS_BOOT -c "vbr.cpp" -o "out/vbr.o"
 
 $CXX -m16 -O2 -Osize -T "vbr.ld" -o "out/vbr" \
-     -ffreestanding -nostdlib "out/vbr.o"
+     -ffreestanding -nostdlib "out/vbr.o" "out/vbr_ABI.o"
 
 echo "***** Compiling installfat *****"
 

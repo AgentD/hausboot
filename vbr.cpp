@@ -1,10 +1,13 @@
 #include "video.h"
+#include "MBREntry.h"
 
 static const char *msg = "Hello from VBR!";
 
-__attribute__ ((naked, noreturn, section(".entry")))
-void main(void)
+void main(uint32_t edx, const MBREntry *ent)
 {
+	(void)edx;
+	(void)ent;
+
 	auto *vidmem = (VidmemEntry *)0xB8000;
 
 	for (unsigned int i = 0; i < 80 * 25; ++i) {
