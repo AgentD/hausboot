@@ -39,8 +39,11 @@ _relocated:
 
  Jumps into the volume boot record loaded to 0000:7c00, setting up the
  binary interface as expected:
-  - DL must containing the boot device number for INT 13
+  - DL containing the boot device number for INT 13
   - DS:SI pointing to the partition table entry that was selected
+
+ Note: edx is popped twice intentionally. First time is to get rid of the
+ return address that is also on the stack.
  */
 CallVbr:
 	pop	%edx
