@@ -44,8 +44,10 @@ void main(uint32_t edx)
 		if (!ResetDrive(driveNumber))
 			DumpMessageAndHang(msgResetDrv);
 
-		if (!LoadSector(driveNumber, it.StartAddressCHS(), bootSector))
+		if (!LoadSectors(driveNumber, it.StartAddressCHS(),
+				 bootSector, 1)) {
 			DumpMessageAndHang(msgFailLoad);
+		}
 
 		if (bootSector[255] != 0xAA55)
 			DumpMessageAndHang(msgNoMagic);
