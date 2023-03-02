@@ -18,16 +18,16 @@ public:
 	}
 
 	void SetSector(uint8_t value) {
-		_mid = value;
+		_mid = value & 0x3F;
 	}
 
 	uint16_t Cylinder() const {
-		return (static_cast<uint16_t>(_mid & 0xC0) << 8) | _hi;
+		return (static_cast<uint16_t>(_mid & 0xC0) << 2) | _hi;
 	}
 
 	void SetCylinder(uint16_t value) {
 		_mid &= ~(0xC0);
-		_mid |= (value >> 8) & 0xC0;
+		_mid |= (value >> 2) & 0xC0;
 
 		_hi = value & 0xFF;
 	}
