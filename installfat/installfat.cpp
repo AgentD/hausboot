@@ -1,4 +1,5 @@
 #include "FatSuper.h"
+#include "stage2.h"
 
 #include <iostream>
 #include <cstring>
@@ -214,6 +215,11 @@ int main(int argc, char **argv)
 
 		memset((uint8_t *)disk + 2 * 512 + stage2.size(),
 		       0, max - stage2.size());
+
+		auto *hdr = (Stage2Info *)((uint8_t *)disk + 2 * 512);
+
+		hdr->SetSectorCount(stage2.size());
+		hdr->UpdateChecksum();
 	}
 
 	// cleanup

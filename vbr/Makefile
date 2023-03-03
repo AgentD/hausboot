@@ -7,7 +7,8 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 HEADERS := ../include/bios.h ../include/CHSPacked.h ../include/video.h \
 	../include/MBREntry.h ../include/UnalignedInt.h \
 	../include/FlagField.h ../include/FatSuper.h \
-	../include/FixedLengthString.h ../include/ByteBlob.h
+	../include/FixedLengthString.h ../include/ByteBlob.h \
+	../include/stage2.h
 
 vbr.bin: vbr.ld abi.o vbr.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

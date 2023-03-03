@@ -1,4 +1,8 @@
 #include "video.h"
+#include "stage2.h"
+
+__attribute__ ((section(".header")))
+Stage2Info header;
 
 static const char *msg = "Hello from Stage 2!";
 

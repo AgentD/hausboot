@@ -6,6 +6,7 @@ SECTIONS
 	. = 0x1000;
 
 	.text : {
+		KEEP(*(.header))
 		KEEP(*(.entry))
 		*(.text)
 		*(.text.*)
