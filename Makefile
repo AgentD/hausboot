@@ -1,5 +1,3 @@
-CXXFLAGS := -I./include
-
 disk.img: fatpart.img mbr/mbr.bin
 	dd if=/dev/zero of=$@ bs=1M count=50
 	parted --script $@ \
@@ -9,13 +7,14 @@ disk.img: fatpart.img mbr/mbr.bin
 	dd if=./mbr/mbr.bin of=$@ conv=notrunc bs=1 count=446
 	dd if=./fatpart.img of=$@ conv=notrunc bs=512 seek=2048
 
-fatpart.img: installfat vbr/vbr.bin stage2/stage2.bin
+fatpart.img: installfat/installfat vbr/vbr.bin stage2/stage2.bin
 	dd if=/dev/zero of=$@ bs=1M count=40
 	mkfs.fat -F 32 $@
-	./installfat -v "vbr/vbr.bin" -o $@ --stage2 "stage2/stage2.bin"
+	./installfat/installfat -v "vbr/vbr.bin" -o $@ \
+				--stage2 "stage2/stage2.bin"
 
-installfat: installfat.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+installfat/installfat:
+	$(MAKE) -C installfat
 
 mbr/mbr.bin:
 	$(MAKE) -C mbr
@@ -31,4 +30,5 @@ clean:
 	$(MAKE) -C mbr clean
 	$(MAKE) -C vbr clean
 	$(MAKE) -C stage2 clean
-	$(RM) *.img *.o installfat
+	$(MAKE) -C installfat clean
+	$(RM) *.img
