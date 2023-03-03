@@ -1,7 +1,5 @@
 *.o
 *~
 *.img
-mbr
-vbr
+*.bin
 installfat
-stage2

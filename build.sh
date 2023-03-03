@@ -8,49 +8,47 @@ CXXFLAGS="-I./include -std=c++17 -Wall -Wextra"
 CXXFLAGS_BOOT="$CXXFLAGS -m16 -Wno-main -ffreestanding"
 CXXFLAGS_BOOT="$CXXFLAGS_BOOT -fno-exceptions -fno-rtti -O2 -Os"
 
-mkdir -p out
-
 echo "***** Compiling MBR *****"
 
-$AS $ASFLAGS "mbr_ABI.S" -o "out/mbr_ABI.o"
-$CXX $CXXFLAGS_BOOT -c "mbr.cpp" -o "out/mbr.o"
+$AS $ASFLAGS "mbr/abi.S" -o "mbr/abi.o"
+$CXX $CXXFLAGS_BOOT -c "mbr/mbr.cpp" -o "mbr/mbr.o"
 
-$CXX -m16 -O2 -Osize -T "mbr.ld" -o "out/mbr" \
-     -ffreestanding -nostdlib "out/mbr.o" "out/mbr_ABI.o"
+$CXX -m16 -O2 -Osize -T "mbr/mbr.ld" -o "mbr/mbr.bin" \
+     -ffreestanding -nostdlib "mbr/mbr.o" "mbr/abi.o"
 
 echo "***** Compiling VBR *****"
 
-$AS $ASFLAGS "vbr_ABI.S" -o "out/vbr_ABI.o"
-$CXX $CXXFLAGS_BOOT -c "vbr.cpp" -o "out/vbr.o"
+$AS $ASFLAGS "vbr/abi.S" -o "vbr/abi.o"
+$CXX $CXXFLAGS_BOOT -c "vbr/vbr.cpp" -o "vbr/vbr.o"
 
-$CXX -m16 -O2 -Osize -T "vbr.ld" -o "out/vbr" \
-     -ffreestanding -nostdlib "out/vbr.o" "out/vbr_ABI.o"
+$CXX -m16 -O2 -Osize -T "vbr/vbr.ld" -o "vbr/vbr.bin" \
+     -ffreestanding -nostdlib "vbr/vbr.o" "vbr/abi.o"
 
 echo "***** Compiling Stage 2 *****"
 
-$CXX $CXXFLAGS_BOOT -c "stage2.cpp" -o "out/stage2.o"
+$CXX $CXXFLAGS_BOOT -c "stage2/stage2.cpp" -o "stage2/stage2.o"
 
-$CXX -m16 -O2 -Osize -T "stage2.ld" -o "out/stage2" \
-     -ffreestanding -nostdlib "out/stage2.o"
+$CXX -m16 -O2 -Osize -T "stage2/stage2.ld" -o "stage2/stage2.bin" \
+     -ffreestanding -nostdlib "stage2/stage2.o"
 
 echo "***** Compiling installfat *****"
 
-$CXX $CXXFLAGS "installfat.cpp" -o "out/installfat"
+$CXX $CXXFLAGS "installfat.cpp" -o "installfat"
 
 echo "***** Building FAT Partition *****"
 
-dd if=/dev/zero of=./out/fatpart.img bs=1M count=40
-mkfs.fat -F 32 "./out/fatpart.img"
-./out/installfat -v "out/vbr" -o "out/fatpart.img" --stage2 "out/stage2"
+dd if=/dev/zero of=./fatpart.img bs=1M count=40
+mkfs.fat -F 32 "./fatpart.img"
+./installfat -v "vbr/vbr.bin" -o "fatpart.img" --stage2 "stage2/stage2.bin"
 
 echo "***** Building Disk *****"
 
-dd if=/dev/zero of=./out/disk.img bs=1M count=50
+dd if=/dev/zero of=./disk.img bs=1M count=50
 
-parted --script "./out/disk.img" \
+parted --script "./disk.img" \
 	"mklabel msdos" \
 	"mkpart primary fat32 1M 40M" \
 	"set 1 boot on"
 
-dd if=./out/mbr of=./out/disk.img conv=notrunc bs=1 count=446
-dd if=./out/fatpart.img of=./out/disk.img conv=notrunc bs=512 seek=2048
+dd if=./mbr/mbr.bin of=./disk.img conv=notrunc bs=1 count=446
+dd if=./fatpart.img of=./disk.img conv=notrunc bs=512 seek=2048
