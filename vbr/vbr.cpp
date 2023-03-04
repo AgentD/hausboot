@@ -7,23 +7,6 @@
 static const char *msgErrLoad = "Error loading stage 2!";
 static const char *msgErrBroken = "Stage 2 corrupted!";
 
-[[noreturn]] static void DumpMessageAndHang(const char *msg)
-{
-	auto *vidmem = (VidmemEntry *)0xB8000;
-
-	for (unsigned int i = 0; i < 80 * 25; ++i) {
-		vidmem[i].color.Set(Color::LightGray);
-		vidmem[i].character = 0;
-	}
-
-	for (unsigned int i = 0; msg[i] != '\0'; ++i)
-		vidmem[i].character = msg[i];
-
-	for (;;) {
-		__asm__ __volatile__ ("hlt");
-	}
-}
-
 void main(uint32_t edx, const MBREntry *ent)
 {
 	auto *super = (FatSuper *)0x7c00;
