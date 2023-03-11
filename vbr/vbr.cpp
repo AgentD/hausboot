@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * vbr.cpp
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #include "bios.h"
 #include "video.h"
 #include "MBREntry.h"

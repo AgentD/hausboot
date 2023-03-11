@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * MBRTable.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef MBR_TABLE_H
 #define MBR_TABLE_H
 

@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * ByteBlob.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef BYTE_BLOB_H
 #define BYTE_BLOB_H
 

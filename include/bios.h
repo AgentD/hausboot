@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * bios.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef BIOS_H
 #define BIOS_H
 

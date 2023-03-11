@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * stage2.cpp
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #include "video.h"
 #include "stage2.h"
 

@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * viedo.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef VIDEO_H
 #define VIDEO_H
 

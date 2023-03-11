@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * mbr.cpp
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #include "MBRTable.h"
 #include "bios.h"
 #include "video.h"

@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * FatSuper.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef FAT_SUPER_H
 #define FAT_SUPER_H
 

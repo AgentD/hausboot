@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * CHSPacked.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef CHS_PACKED_H
 #define CHS_PACKED_H
 

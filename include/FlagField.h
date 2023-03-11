@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * FlagField.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef FLAG_FIELD_H
 #define FLAG_FIELD_H
 

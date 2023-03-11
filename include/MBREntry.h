@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * MBREntry.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef MBR_ENTRY_H
 #define MBR_ENTRY_H
 

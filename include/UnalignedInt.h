@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * UnalignedInt.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef UNALIGNED_INT_H
 #define UNALIGNED_INT_H
 

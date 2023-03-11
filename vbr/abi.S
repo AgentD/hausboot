@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * abi.S
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 	.code16
 	.global main
 	.section ".entry"

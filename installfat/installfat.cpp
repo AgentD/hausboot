@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * installfat.cpp
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #include "FatSuper.h"
 #include "stage2.h"
 

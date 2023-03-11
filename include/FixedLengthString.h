@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * FixedLengthString.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
 #ifndef FIXED_LENGTH_STRING_H
 #define FIXED_LENGTH_STRING_H
 
