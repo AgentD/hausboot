@@ -51,11 +51,20 @@ public:
 
 		return (_checksum != 0) && (ComputeChecksum() == 0);
 	}
+
+	void SetBiosBootDrive(uint8_t drive) {
+		_biosBootDrive = drive;
+	}
+
+	uint8_t BiosBootDrive() const {
+		return _biosBootDrive;
+	}
 private:
 	const uint32_t _magic = Stage2Magic;
 	uint32_t _checksum = 0;
 	uint16_t _sectorCount = 0;
-	const uint16_t _pad0 = 0;
+	uint8_t _biosBootDrive = 0;
+	const uint8_t _pad0 = 0;
 };
 
 static_assert(sizeof(Stage2Info) == 12);

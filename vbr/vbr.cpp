@@ -45,5 +45,7 @@ void main(uint32_t edx, const MBREntry *ent)
 		DumpMessageAndHang(msgErrBroken);
 
 	// Enter stage 2
+	hdr->SetBiosBootDrive(driveNum);
+
 	goto *(dst + sizeof(*hdr));
 }
