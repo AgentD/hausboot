@@ -226,6 +226,14 @@ int main(int argc, char **argv)
 
 		hdr->SetSectorCount(stage2.size());
 		hdr->UpdateChecksum();
+
+		if (!hdr->Verify(hdr->SectorCount())) {
+			std::cerr << "Stage 2 header verification failed"
+				  << std::endl;
+			munmap(disk, diskSize);
+			close(fd);
+			return EXIT_FAILURE;
+		}
 	}
 
 	// cleanup

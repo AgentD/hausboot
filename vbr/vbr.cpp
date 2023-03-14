@@ -22,8 +22,10 @@ void main(uint32_t edx, const MBREntry *ent)
 	if (count < 3)
 		DumpMessageAndHang(msgErrLoad);
 
-	if (count > 32)
-		count = 32;
+	count -= 2;
+
+	if (count > 30)
+		count = 30;
 
 	// XXX: we boldly assume the partition to be cylinder
 	// aligned, so the stupid CHS arithmetic won't overflow.
@@ -39,7 +41,7 @@ void main(uint32_t edx, const MBREntry *ent)
 
 	auto *hdr = (Stage2Info *)dst;
 
-	if (!hdr->Verify(count - 2))
+	if (!hdr->Verify(count))
 		DumpMessageAndHang(msgErrBroken);
 
 	// Enter stage 2
