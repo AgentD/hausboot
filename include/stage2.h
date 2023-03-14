@@ -8,6 +8,7 @@
 #define STAGE2_H
 
 #include <cstdint>
+#include <cstddef>
 
 constexpr uint32_t Stage2Magic = 0xD0D0CACA;
 constexpr uint16_t Stage2Location = 0x1000;
@@ -19,6 +20,10 @@ public:
 
 		if (size % 512)
 			_sectorCount += 1;
+	}
+
+	size_t SectorCount() const {
+		return _sectorCount;
 	}
 
 	void UpdateChecksum() {

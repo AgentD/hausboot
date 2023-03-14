@@ -62,7 +62,7 @@ struct VidmemEntry {
 
 static_assert(sizeof(VidmemEntry) == 2);
 
-[[noreturn]] static void DumpMessageAndHang(const char *msg)
+[[noreturn, maybe_unused]] static void DumpMessageAndHang(const char *msg)
 {
 	auto *vidmem = (VidmemEntry *)0xB8000;
 

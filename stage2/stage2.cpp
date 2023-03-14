@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "video.h"
+#include "TextScreen.h"
 #include "stage2.h"
 
 __attribute__ ((section(".header")))
@@ -13,5 +13,14 @@ Stage2Info header;
 __attribute__ ((section(".entry")))
 void main(void)
 {
-	DumpMessageAndHang("Hello from Stage 2!");
+	TextScreen screen;
+
+	screen.Reset();
+
+	screen << "Hello from Stage 2!\n"
+	       << "\tSector count: " << header.SectorCount() << "\n";
+
+	for (;;) {
+		__asm__ volatile("hlt");
+	}
 }
