@@ -1,8 +1,9 @@
-LDFLAGS := -m16 -O2 -Osize -ffreestanding -nostdlib
+LDFLAGS := -m16 -O2 -Osize -ffreestanding -nostdlib -march=i386
 ASFLAGS := --32
 
 CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
-	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os
+	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
+	-momit-leaf-frame-pointer
 
 HEADERS := ../include/bios.h ../include/CHSPacked.h ../include/video.h \
 	../include/MBREntry.h ../include/UnalignedInt.h \

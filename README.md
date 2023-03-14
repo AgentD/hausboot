@@ -202,6 +202,10 @@ account, when calling from assembly into gcc generated code or vice versa.
 
 This also means that current gcc theoretically cannot target anything pre i386.
 
+Also, gcc will happily poop out XMM/SSE instructions with a `0x66` prefix when
+it needs to move data around. Set the proper `-march=i386` flag, to make sure
+it doesn't do that.
+
 ## Computed Goto
 
 gcc allows you to do this:
