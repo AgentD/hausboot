@@ -16,6 +16,7 @@ static const char *msgErrBroken = "Stage 2 corrupted!";
 void main(uint32_t edx, const MBREntry *ent)
 {
 	auto *super = (FatSuper *)0x7c00;
+	MBREntry part = *ent;
 
 	// Get and sanitze number of reserved sectors
 	auto count = super->ReservedSectors();
@@ -29,7 +30,7 @@ void main(uint32_t edx, const MBREntry *ent)
 
 	// XXX: we boldly assume the partition to be cylinder
 	// aligned, so the stupid CHS arithmetic won't overflow.
-	CHSPacked src = ent->StartAddressCHS();
+	CHSPacked src = part.StartAddressCHS();
 	uint8_t driveNum = edx & 0x0FF;
 
 	src.SetSector(src.Sector() + 2);
@@ -46,6 +47,7 @@ void main(uint32_t edx, const MBREntry *ent)
 
 	// Enter stage 2
 	hdr->SetBiosBootDrive(driveNum);
+	hdr->SetBootMBREntry(part);
 
 	goto *(dst + sizeof(*hdr));
 }

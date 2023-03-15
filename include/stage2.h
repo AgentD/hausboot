@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "MBREntry.h"
+
 constexpr uint32_t Stage2Magic = 0xD0D0CACA;
 constexpr uint16_t Stage2Location = 0x1000;
 
@@ -59,14 +61,23 @@ public:
 	uint8_t BiosBootDrive() const {
 		return _biosBootDrive;
 	}
+
+	void SetBootMBREntry(const MBREntry &ent) {
+		_bootMbrEntry = ent;
+	}
+
+	const MBREntry &BootMBREntry() const {
+		return _bootMbrEntry;
+	}
 private:
 	const uint32_t _magic = Stage2Magic;
 	uint32_t _checksum = 0;
 	uint16_t _sectorCount = 0;
 	uint8_t _biosBootDrive = 0;
 	const uint8_t _pad0 = 0;
+	MBREntry _bootMbrEntry{};
 };
 
-static_assert(sizeof(Stage2Info) == 12);
+static_assert(sizeof(Stage2Info) == 28);
 
 #endif /* STAGE2_H */

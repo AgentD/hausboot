@@ -17,9 +17,15 @@ void main(void)
 
 	screen.Reset();
 
+	auto lba = header.BootMBREntry().StartAddressLBA();
+	auto chs = header.BootMBREntry().StartAddressCHS();
+
 	screen << "Hello from Stage 2!\r\n"
 	       << "    Sector count: " << header.SectorCount() << "\r\n"
-	       << "    BIOS boot drive: " << header.BiosBootDrive() << "\r\n";
+	       << "    BIOS boot drive: " << header.BiosBootDrive() << "\r\n"
+	       << "    Boot Partition LBA: " << lba << "\r\n"
+	       << "    CHS: " << chs.Cylinder() << "/" << chs.Head() << "/"
+	       << chs.Sector() << "\r\n";
 
 	for (;;) {
 		__asm__ volatile("hlt");

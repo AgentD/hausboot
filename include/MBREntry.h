@@ -25,6 +25,10 @@ public:
 	const CHSPacked &StartAddressCHS() const {
 		return _chsStart;
 	}
+
+	uint32_t StartAddressLBA() const {
+		return _lbaStart.Read();
+	}
 private:
 	FlagField<Attribute, uint8_t> _attrib;
 	CHSPacked _chsStart;

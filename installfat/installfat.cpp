@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 		memset((uint8_t *)disk + 2 * 512 + stage2.size(),
 		       0, max - stage2.size());
 
-		auto *hdr = (Stage2Info *)((uint8_t *)disk + 2 * 512);
+		auto *hdr = new ((uint8_t *)disk + 2 * 512) Stage2Info();
 
 		hdr->SetSectorCount(stage2.size());
 		hdr->UpdateChecksum();
