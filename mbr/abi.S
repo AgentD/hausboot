@@ -25,7 +25,7 @@ _start:
 	mov	%ax, %es
 	mov	%ax, %ss
 
-	mov	$0x7e00, %sp
+	mov	$0x0a00, %sp
 	pushl	%edx
 
 	mov	$0x0600, %di
