@@ -17,9 +17,9 @@ void main(void)
 
 	screen.Reset();
 
-	screen << "Hello from Stage 2!\n"
-	       << "\tSector count: " << header.SectorCount() << "\n"
-	       << "\tBIOS boot drive: " << header.BiosBootDrive() << "\n";
+	screen << "Hello from Stage 2!\r\n"
+	       << "    Sector count: " << header.SectorCount() << "\r\n"
+	       << "    BIOS boot drive: " << header.BiosBootDrive() << "\r\n";
 
 	for (;;) {
 		__asm__ volatile("hlt");

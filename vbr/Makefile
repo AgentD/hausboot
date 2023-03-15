@@ -5,7 +5,7 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
 	-momit-leaf-frame-pointer
 
-HEADERS := ../include/bios.h ../include/CHSPacked.h ../include/video.h \
+HEADERS := ../include/bios.h ../include/CHSPacked.h ../include/TextScreen.h \
 	../include/MBREntry.h ../include/UnalignedInt.h \
 	../include/FlagField.h ../include/FatSuper.h \
 	../include/FixedLengthString.h ../include/ByteBlob.h \

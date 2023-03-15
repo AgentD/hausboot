@@ -5,7 +5,7 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "bios.h"
-#include "video.h"
+#include "TextScreen.h"
 #include "MBREntry.h"
 #include "FatSuper.h"
 #include "stage2.h"

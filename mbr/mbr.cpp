@@ -4,9 +4,9 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
+#include "TextScreen.h"
 #include "MBRTable.h"
 #include "bios.h"
-#include "video.h"
 
 #include <cstdint>
 
