@@ -32,3 +32,11 @@ clean:
 	$(MAKE) -C stage2 clean
 	$(MAKE) -C installfat clean
 	$(RM) *.img
+
+.PHONY: runqemu
+runqemu: disk.img
+	qemu-system-i386 -drive format=raw,file=./disk.img
+
+.PHONY: runbochs
+runbochs: disk.img
+	bochs -q -f ./bochsrc.txt

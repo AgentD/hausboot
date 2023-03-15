@@ -80,11 +80,17 @@ It's kills several debates with one stone, and [there might be some bragging rig
 You need a *very* recent version of g++, as well as the 32 bit version
 of `libstdc++` if you are on x86_64 (if you are on "Apple Silicon": sorry...).
 
-Simply run make, use `run.sh` to fire up qemu:
+Simply run make, use `make runqemu` to fire up qemu:
 
 ```sh
 make
-./run.sh
+make runqemu
+```
+
+Alternatively, you can try running it in [Bochs](https://en.wikipedia.org/wiki/Bochs):
+
+```sh
+make runbochs
 ```
 
 With any luck, it might work on your machine as well :-). I have only tested it
@@ -250,7 +256,7 @@ objdump -D -m i8086 -b binary ./mbr/mbr.bin
 Qemu has built in support for the gdbserver protocol:
 
 ```sh
-	qemu-system-i386 -drive format=raw,file=./disk.img -S -s
+qemu-system-i386 -drive format=raw,file=./disk.img -S -s
 ```
 
 You can then connect to it from within gdb:
@@ -269,3 +275,62 @@ Breakpoint 1, 0x00007c00 in ?? ()
 ```
 
 You can dump registers and disassemble memory ranges, and so on.
+
+## Debugging Low Level Code with Bochs
+
+Bochs needs to be compiled with debugger mode enabled for this. Typical Linux
+Distros have a separate package for that, with a separate binary that can
+launch you into a debug shell:
+
+```sh
+$ bochs-debugger -q -f bochsrc.txt
+... bla bla bla ...
+(0) [0x0000fffffff0] f000:fff0 (unk. ctxt): jmpf 0xf000:e05b          ; ea5be000f0
+<bochs:1> lbreak 0x7c00
+<bochs:2> c
+... bla bla bla ...
+(0) Breakpoint 1, 0x0000000000007c00 in ?? ()
+Next at t=16300062
+(0) [0x000000007c00] 0000:7c00 (unk. ctxt): xor ax, ax                ; 31c0
+<bochs:3>
+```
+
+You can single step with `s`, an optional number argument steps over several
+instructions, disassembly and address are shown.
+
+For break points, `break` expects a `segment:offset` address, while `lbreak`
+expects a linear address, `c` continues until the next break point.
+
+You can dump registers with `r`:
+
+```sh
+<bochs:3> r
+CPU0:
+rax: 00000000_0000aa55
+rbx: 00000000_00000000
+rcx: 00000000_00090000
+rdx: 00000000_00000080
+rsp: 00000000_0000ffd6
+rbp: 00000000_00000000
+rsi: 00000000_000e0000
+rdi: 00000000_0000ffac
+r8 : 00000000_00000000
+r9 : 00000000_00000000
+r10: 00000000_00000000
+r11: 00000000_00000000
+r12: 00000000_00000000
+r13: 00000000_00000000
+r14: 00000000_00000000
+r15: 00000000_00000000
+rip: 00000000_00007c00
+eflags 0x00000082: id vip vif ac vm rf nt IOPL=0 of df if tf SF zf af pf cf
+```
+
+or inspect/hexdump memory regions with `x /<count><unit> <address>`:
+
+```sh
+<bochs:12> x /16b 0x7df0
+[bochs]:
+0x0000000000007df0 <bogus+       0>:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x0000000000007df8 <bogus+       8>:	0x00	0x00	0x00	0x00	0x00	0x00	0x55	0xaa
+```
