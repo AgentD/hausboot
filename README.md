@@ -206,6 +206,11 @@ Also, gcc will happily poop out XMM/SSE instructions with a `0x66` prefix when
 it needs to move data around. Set the proper `-march=i386` flag, to make sure
 it doesn't do that.
 
+Furthermore, accessing memory past 64k is a PITA. There is an `0x67` opcode
+prefix that allows you to load/store using a 32 bit register. On Qemu, this
+works just fine, but on real hardware, this this will trigger a protection
+fault if you try to access memory past the 64k current segment boundary.
+
 ## Computed Goto
 
 gcc allows you to do this:
