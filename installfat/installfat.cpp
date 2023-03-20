@@ -106,7 +106,7 @@ static uint64_t Stage2SpaceAvailable(void)
 	if (secs <= 2)
 		return 0;
 
-	uint64_t space = secs * super->BytesPerSector();
+	uint64_t space = (secs - 2) * super->BytesPerSector();
 	if (space >= diskSize)
 		return 0;
 
