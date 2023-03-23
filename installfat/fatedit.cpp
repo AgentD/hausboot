@@ -525,14 +525,8 @@ static bool InitializeEmptyDirectory(uint32_t parentIdx, uint32_t &indexOut)
 		data.Append(&zero, sizeof(zero));
 }
 
-static void CreateDirectory(std::string args)
+static bool FindParent(const std::list<std::string> &path, DirEntry &parent)
 {
-	auto path = SplitPath(args);
-	if (path.empty())
-		return;
-
-	DirEntry parent;
-
 	if (path.size() > 1) {
 		std::ostringstream ss;
 		size_t idx = 0;
@@ -549,17 +543,68 @@ static void CreateDirectory(std::string args)
 		auto prefix = ss.str();
 
 		if (!FindFile(prefix, parent))
-			return;
+			return false;
 
 		if (!parent.isDirectory) {
 			std::cerr << prefix << ": not a directory" << std::endl;
-			return;
+			return false;
 		}
 	} else {
 		parent.size = 0;
 		parent.firstCluster = super.RootDirIndex();
 		parent.isDirectory = true;
 	}
+
+	return true;
+}
+
+static void AppendDirectoryEntry(uint32_t cluster, size_t size, bool isDir,
+				 const std::string &name,
+				 uint32_t fileCluster, size_t fileSize)
+{
+	FatDirent ent;
+	ent.SetName(name.c_str());
+	ent.SetClusterIndex(fileCluster);
+
+	if (isDir) {
+		FlagField<FatDirent::Flags, uint8_t> flags;
+		flags.Set(FatDirent::Flags::Directory);
+		ent.SetEntryFlags(flags);
+	} else {
+		ent.SetSize(fileSize);
+	}
+
+	FileWriter parentDir(cluster, size);
+	parentDir.Append(&ent, sizeof(ent));
+
+	memset(&ent, 0, sizeof(ent));
+	parentDir.Append(&ent, sizeof(ent));
+}
+
+static bool CheckEntryNotInDir(uint32_t cluster, size_t &actualSize,
+			       const std::string &name)
+{
+	FileReader rd(cluster, 0xFFFFFFFF);
+	std::vector<DirEntry> entries;
+
+	if (!ScanDirectory(rd, entries, actualSize))
+		return false;
+
+	for (const auto &it : entries) {
+		if (it.shortName == name || it.longName == name) {
+			std::cerr << name << ": already exists" << std::endl;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static void CreateDirectory(std::string args)
+{
+	auto path = SplitPath(args);
+	if (path.empty())
+		return;
 
 	auto name = path.back();
 	if (!IsShortName(name)) {
@@ -572,39 +617,21 @@ static void CreateDirectory(std::string args)
 		return;
 	}
 
-	FileReader rd(parent.firstCluster, 0xFFFFFFFF);
-	std::vector<DirEntry> entries;
+	DirEntry parent;
 	size_t actualSize;
 
-	if (!ScanDirectory(rd, entries, actualSize))
+	if (!FindParent(path, parent))
 		return;
 
-	for (const auto &it : entries) {
-		if (it.shortName == name || it.longName == name) {
-			std::cerr << args << ": already exists" << std::endl;
-			return;
-		}
-	}
+	if (!CheckEntryNotInDir(parent.firstCluster, actualSize, name))
+		return;
 
 	uint32_t index;
 
 	if (!InitializeEmptyDirectory(parent.firstCluster, index))
 		return;
 
-	FileWriter parentDir(parent.firstCluster, actualSize);
-
-	FlagField<FatDirent::Flags, uint8_t> flags;
-	flags.Set(FatDirent::Flags::Directory);
-
-	FatDirent ent;
-	ent.SetName(name.c_str());
-	ent.SetEntryFlags(flags);
-	ent.SetClusterIndex(index);
-
-	parentDir.Append(&ent, sizeof(ent));
-
-	memset(&ent, 0, sizeof(ent));
-	parentDir.Append(&ent, sizeof(ent));
+	AppendDirectoryEntry(parent.firstCluster, actualSize, true, name, index, 0);
 }
 
 int main(int argc, char **argv)
