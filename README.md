@@ -193,6 +193,58 @@ could load a Linux kernel with an initramfs image.
 This currently requires more work. The main purpose, showing that a
 boot *sector* can be implemented in C++, is done.
 
+## The FAT filesystem
+
+The FAT filesystem (**f**latulent, **a**rchaic **t**rash) was the original,
+native filesystem for DOS (**d**ead **o**perating **s**ystem) and has over the
+years become the lingua franca of filesystems, supported by practically every
+relevant OS, typically used on external storage media that can be exchanged
+between them. At it's core it is idiotically simple, but full of quirks and
+semi backwards compatible extensions.
+
+It mainly consists of a super block and a "file allocation table" that manages
+data *clusters* that make up the rest of the disk. Clusters are basically
+logical data units, indexing starts after the allocation table. Clusters are
+all of the same size, which can be one or more sectors.
+
+Data belonging to a file is stored using a linked list of clusters. The links
+are stored in the allocation table, which is simply an array of cluster indices.
+Basically if you know the cluster index that you are currently looking at, you
+use that as an index into the array and the value stored there is the index of
+the next cluster where you should continue reading.
+
+There are special sentinel values to indicate that there is no next cluster (the
+one you are holding is the last one). Unused clusters are also marked with a
+special value in the table.
+
+A directory is basically a file that contains a sequence of directory entry
+records, storing an entry name, the first cluster where the entry data begins,
+how big it is and some flags (e.g. this is not a file but actually a directory).
+The super block basically tells us the cluster index of the root directory, so
+we can recursively scan our way through the tree. Because power can fail during
+writes, there are typically 2 of those tables.
+
+The main difference between FAT12, FAT16 and FAT32 is the number of bits used for
+the cluster indices in the table, i.e. 12, 16 and "28 out of 32" respectively.
+Also, FAT12 and FAT16 had some special case handling for the root directory.
+This probably has boot loader related reasons, FAT32 instead simply has a
+reserved region between the VBR and the first FART, where we can park a second
+stage boot loader.
+
+You should note, that you **cannot choose** which FAT type you are using! It
+depends *entirely* on **the number of clusters**. If your disk has up to 4085
+clusters, you are using FAT12, for up to 65525 clusters, you are using FAT16,
+and for higher numbers FAT32. You cannot format a floppy with FAT16 or a 10M
+hard disk with FAT32. What you can do, is dial up the number of sectors per
+cluster to fudge the cluster count below a threshold and use a smaller FAT
+for a bigger disk. Also, you should stay away from those numbers as far as
+possible, because different implementations are broken in different ways.
+
+A disk must have *at least* some circa 32M to be FAT32 formatted. With 1 sector
+per cluster, that gives us 65536 clusters. For 4k clusters it would be somewhere
+around 256M. In both cases, you should bump it up a little further tough, to get
+away from the nasty threshold.
+
 # Minor Things I Learned Along the Way
 
 ## Building 16 bit code with gcc
