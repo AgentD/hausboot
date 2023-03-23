@@ -7,11 +7,15 @@ disk.img: fatpart.img mbr/mbr.bin
 	dd if=./mbr/mbr.bin of=$@ conv=notrunc bs=1 count=446
 	dd if=./fatpart.img of=$@ conv=notrunc bs=512 seek=2048
 
-fatpart.img: installfat/installfat vbr/vbr.bin stage2/stage2.bin
+fatpart.img: installfat/installfat installfat/fatedit \
+	vbr/vbr.bin stage2/stage2.bin
 	dd if=/dev/zero of=$@ bs=1M count=40
 	mkfs.fat -F 32 $@
 	./installfat/installfat -v "vbr/vbr.bin" -o $@ \
 				--stage2 "stage2/stage2.bin"
+
+installfat/fatedit:
+	$(MAKE) -C installfat
 
 installfat/installfat:
 	$(MAKE) -C installfat

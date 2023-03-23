@@ -64,6 +64,26 @@ public:
 	void SetBackupIndex(uint16_t value) {
 		_bootSecCopyIndex.Set(value);
 	}
+
+	unsigned int SectorsPerCluster() const {
+		return _sectorsPerCluster;
+	}
+
+	unsigned int NumFats() const {
+		return _numFats;
+	}
+
+	unsigned int SectorCount() const {
+		return _totalSectorCount.Read();
+	}
+
+	unsigned int SectorsPerFat() const {
+		return _sectorsPerFat.Read();
+	}
+
+	unsigned int RootDirIndex() const {
+		return _rootDirIndex.Read();
+	}
 private:
 	struct {
 	public:

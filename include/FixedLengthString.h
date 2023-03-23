@@ -13,6 +13,11 @@
 template<size_t COUNT, char FILL>
 class FixedLengthString {
 public:
+	FixedLengthString() {
+		for (auto &it : _raw)
+			it = FILL;
+	}
+
 	FixedLengthString(const char *value) {
 		Set(value);
 	}
@@ -25,6 +30,10 @@ public:
 
 		for (; i < COUNT; ++i)
 			_raw[i] = FILL;
+	}
+
+	uint8_t At(size_t i) const {
+		return i < COUNT ? _raw[i] : FILL;
 	}
 private:
 	uint8_t _raw[COUNT];
