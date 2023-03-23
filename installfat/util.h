@@ -110,48 +110,46 @@ static std::list<std::string> SplitPath(std::string str)
 	return out;
 }
 
-static bool IsShortPath(const std::list<std::string> &path)
+static bool IsShortName(const std::string &entry)
 {
-	for (const auto &entry : path) {
-		if (entry.empty() || entry.size() > (8 + 3))
+	if (entry.empty() || entry.size() > (8 + 3))
+		return false;
+
+	for (auto &c : entry) {
+		// Must be printable ASCII
+		if (c < 0x20 || c > 0x7E)
 			return false;
 
-		for (auto &c : entry) {
-			// Must be printable ASCII
-			if (c < 0x20 || c > 0x7E)
-				return false;
-
-			// Must not be lower case
-			if (c >= 0x61 && c <= 0x7A)
-				return false;
-
-			// exclude :;<=>?
-			if (c >= 0x3A && c <= 0x3F)
-				return false;
-
-			// more special chars to exclude
-			if (c == '|' || c == '\\' || c == '/' || c == '"' || c == '*')
-				return false;
-
-			if (c == '+' || c == ',' || c == '[' || c == ']')
-				return false;
-		}
-
-		// Rules for the file extension
-		auto pos = entry.find('.');
-		if (pos == std::string::npos)
-			continue;
-
-		if (pos == 0 || pos == (entry.size() - 1))
+		// Must not be lower case
+		if (c >= 0x61 && c <= 0x7A)
 			return false;
 
-		if (pos > 8 || (entry.size() - pos) > 4)
+		// exclude :;<=>?
+		if (c >= 0x3A && c <= 0x3F)
 			return false;
 
-		for (size_t i = 0; i < entry.size(); ++i) {
-			if (entry.at(i) == '.' && i != pos)
-				return false;
-		}
+		// more special chars to exclude
+		if (c == '|' || c == '\\' || c == '/' || c == '"' || c == '*')
+			return false;
+
+		if (c == '+' || c == ',' || c == '[' || c == ']')
+			return false;
+	}
+
+	// Rules for the file extension
+	auto pos = entry.find('.');
+	if (pos == std::string::npos)
+		return true;
+
+	if (pos == 0 || pos == (entry.size() - 1))
+		return false;
+
+	if (pos > 8 || (entry.size() - pos) > 4)
+		return false;
+
+	for (size_t i = 0; i < entry.size(); ++i) {
+		if (entry.at(i) == '.' && i != pos)
+			return false;
 	}
 
 	return true;

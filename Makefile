@@ -13,6 +13,7 @@ fatpart.img: installfat/installfat installfat/fatedit \
 	mkfs.fat -F 32 $@
 	./installfat/installfat -v "vbr/vbr.bin" -o $@ \
 				--stage2 "stage2/stage2.bin"
+	echo "mkdir BOOT" | ./installfat/fatedit $@
 
 installfat/fatedit:
 	$(MAKE) -C installfat

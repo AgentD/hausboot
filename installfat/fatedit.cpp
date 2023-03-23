@@ -12,6 +12,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <vector>
 #include <cctype>
 #include <string>
@@ -234,6 +235,10 @@ public:
 		}
 
 		return true;
+	}
+
+	auto FirstCluster() const {
+		return _firstCluster;
 	}
 private:
 	size_t SpaceAvailable() const {
@@ -493,6 +498,115 @@ static void DumpFile(std::string args)
 	}
 }
 
+static bool InitializeEmptyDirectory(uint32_t parentIdx, uint32_t &indexOut)
+{
+	FlagField<FatDirent::Flags, uint8_t> flags;
+	flags.Set(FatDirent::Flags::Directory);
+
+	FileWriter data;
+
+	FatDirent dot;
+	dot.SetName(".");
+	dot.SetEntryFlags(flags);
+	dot.SetClusterIndex(data.FirstCluster());
+
+	FatDirent dotdot;
+	dotdot.SetName("..");
+	dotdot.SetEntryFlags(flags);
+	dotdot.SetClusterIndex(parentIdx);
+
+	FatDirent zero;
+	memset(&zero, 0, sizeof(zero));
+
+	indexOut = data.FirstCluster();
+
+	return data.Append(&dot, sizeof(dot)) &&
+		data.Append(&dotdot, sizeof(dotdot)) &&
+		data.Append(&zero, sizeof(zero));
+}
+
+static void CreateDirectory(std::string args)
+{
+	auto path = SplitPath(args);
+	if (path.empty())
+		return;
+
+	DirEntry parent;
+
+	if (path.size() > 1) {
+		std::ostringstream ss;
+		size_t idx = 0;
+
+		for (const auto &it : path) {
+			if (idx < path.size() - 1) {
+				if (idx > 0)
+					ss << '/';
+				ss << it;
+				++idx;
+			}
+		}
+
+		auto prefix = ss.str();
+
+		if (!FindFile(prefix, parent))
+			return;
+
+		if (!parent.isDirectory) {
+			std::cerr << prefix << ": not a directory" << std::endl;
+			return;
+		}
+	} else {
+		parent.size = 0;
+		parent.firstCluster = super.RootDirIndex();
+		parent.isDirectory = true;
+	}
+
+	auto name = path.back();
+	if (!IsShortName(name)) {
+		std::cerr << name << ": is not a short name (sorry)" << std::endl;
+		return;
+	}
+
+	if (name.find('.') != std::string::npos) {
+		std::cerr << name << ": directory name must not contain `.`" << std::endl;
+		return;
+	}
+
+	FileReader rd(parent.firstCluster, 0xFFFFFFFF);
+	std::vector<DirEntry> entries;
+	size_t actualSize;
+
+	if (!ScanDirectory(rd, entries, actualSize))
+		return;
+
+	for (const auto &it : entries) {
+		if (it.shortName == name || it.longName == name) {
+			std::cerr << args << ": already exists" << std::endl;
+			return;
+		}
+	}
+
+	uint32_t index;
+
+	if (!InitializeEmptyDirectory(parent.firstCluster, index))
+		return;
+
+	FileWriter parentDir(parent.firstCluster, actualSize);
+
+	FlagField<FatDirent::Flags, uint8_t> flags;
+	flags.Set(FatDirent::Flags::Directory);
+
+	FatDirent ent;
+	ent.SetName(name.c_str());
+	ent.SetEntryFlags(flags);
+	ent.SetClusterIndex(index);
+
+	parentDir.Append(&ent, sizeof(ent));
+
+	memset(&ent, 0, sizeof(ent));
+	parentDir.Append(&ent, sizeof(ent));
+}
+
 int main(int argc, char **argv)
 {
 	if (argc != 2 || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")) {
@@ -568,6 +682,11 @@ int main(int argc, char **argv)
 
 		if (MatchCommand(line, "type")) {
 			DumpFile(line);
+			continue;
+		}
+
+		if (MatchCommand(line, "mkdir")) {
+			CreateDirectory(line);
 			continue;
 		}
 

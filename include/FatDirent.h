@@ -48,6 +48,10 @@ public:
 		return _flags;
 	}
 
+	void SetEntryFlags(FlagField<Flags, uint8_t> flags) {
+		_flags = flags;
+	}
+
 	uint8_t Checksum() const {
 		uint8_t sum = 0;
 
@@ -66,6 +70,14 @@ public:
 
 	bool IsLastInList() const {
 		return _name.At(0) == 0x00;
+	}
+
+	void SetName(const char *name) {
+		_name.Set(name);
+	}
+
+	void SetExtension(const char *ext) {
+		_extension.Set(ext);
 	}
 
 	bool NameToString(char buffer[13]) const {
@@ -96,16 +108,16 @@ public:
 private:
 	FixedLengthString<8, ' '> _name;
 	FixedLengthString<3, ' '> _extension;
-	FlagField<Flags, uint8_t> _flags;
+	FlagField<Flags, uint8_t> _flags{};
 	ByteBlob<2> _unused;
-	UnalignedInt<uint16_t> _ctimeHMS;
-	UnalignedInt<uint16_t> _ctimeYMD;
-	UnalignedInt<uint16_t> _atimeYMD;
-	UnalignedInt<uint16_t> _clusterIndexHigh;
-	UnalignedInt<uint16_t> _mtimeHMS;
-	UnalignedInt<uint16_t> _mtimeYMD;
-	UnalignedInt<uint16_t> _clusterIndexLow;
-	UnalignedInt<uint32_t> _size;
+	UnalignedInt<uint16_t> _ctimeHMS = 0;
+	UnalignedInt<uint16_t> _ctimeYMD = 0;
+	UnalignedInt<uint16_t> _atimeYMD = 0;
+	UnalignedInt<uint16_t> _clusterIndexHigh = 0;
+	UnalignedInt<uint16_t> _mtimeHMS = 0;
+	UnalignedInt<uint16_t> _mtimeYMD = 0;
+	UnalignedInt<uint16_t> _clusterIndexLow = 0;
+	UnalignedInt<uint32_t> _size = 0;
 };
 
 static_assert(sizeof(FatDirent) == 32);
