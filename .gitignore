@@ -2,5 +2,6 @@
 *~
 *.img
 *.bin
+*.SYS
 installfat/installfat
 installfat/fatedit

@@ -8,12 +8,16 @@ disk.img: fatpart.img mbr/mbr.bin
 	dd if=./fatpart.img of=$@ conv=notrunc bs=512 seek=2048
 
 fatpart.img: installfat/installfat installfat/fatedit \
-	vbr/vbr.bin stage2/stage2.bin
+	vbr/vbr.bin stage2/stage2.bin kernel/KRNL386.SYS
 	dd if=/dev/zero of=$@ bs=1M count=40
 	mkfs.fat -F 32 $@
 	./installfat/installfat -v "vbr/vbr.bin" -o $@ \
 				--stage2 "stage2/stage2.bin"
 	echo "mkdir BOOT" | ./installfat/fatedit $@
+	echo "pack kernel/KRNL386.SYS BOOT/KRNL386.SYS" | ./installfat/fatedit $@
+
+kernel/KRNL386.SYS:
+	$(MAKE) -C kernel
 
 installfat/fatedit:
 	$(MAKE) -C installfat
@@ -36,6 +40,7 @@ clean:
 	$(MAKE) -C vbr clean
 	$(MAKE) -C stage2 clean
 	$(MAKE) -C installfat clean
+	$(MAKE) -C kernel clean
 	$(RM) *.img
 
 .PHONY: runqemu
