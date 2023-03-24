@@ -8,6 +8,7 @@
 #include "fs/FatFsInfo.h"
 #include "fs/FatDirent.h"
 #include "fs/FatDirentLong.h"
+#include "host/File.h"
 #include "util.h"
 
 #include <cstdlib>
@@ -27,8 +28,7 @@ struct DirEntry {
 
 static FatSuper super;
 static FatFsInfo fsinfo;
-static const char *filename;
-static int fd = -1;
+static File file;
 
 static size_t ClusterIndex2Sector(size_t N)
 {
@@ -100,33 +100,23 @@ public:
 		return 0x0FFFFFFF8;
 	}
 
-	bool LoadFromImage() {
+	void LoadFromImage() {
 		auto offset = super.ReservedSectors() * super.BytesPerSector();
 		auto size = super.SectorsPerFat() * super.BytesPerSector();
 
 		_fatRaw.resize(size);
 
-		if (!ReadRetry(fd, filename, offset, _fatRaw.data(), _fatRaw.size())) {
-			std::cerr << "Error reading raw FAT data" << std::endl;
-			return false;
-		}
-
-		return true;
+		file.ReadAt(offset, _fatRaw.data(), _fatRaw.size());
 	}
 
-	bool WriteToImage() {
+	void WriteToImage() {
 		auto offset = super.ReservedSectors() * super.BytesPerSector();
 
 		for (size_t i = 0; i < super.NumFats(); ++i) {
-			if (!WriteRetry(fd, filename, offset, _fatRaw.data(), _fatRaw.size())) {
-				std::cerr << "Error updating FAT #" << i << std::endl;
-				return false;
-			}
+			file.WriteAt(offset, _fatRaw.data(), _fatRaw.size());
 
 			offset += _fatRaw.size();
 		}
-
-		return true;
 	}
 private:
 	std::vector<uint8_t> _fatRaw;
@@ -159,8 +149,7 @@ public:
 			if (diff > size)
 				diff = size;
 
-			if (!ReadRetry(fd, filename, offset, data, diff))
-				return -1;
+			file.ReadAt(offset, data, diff);
 
 			_offset += diff;
 			_size -= diff;
@@ -268,8 +257,7 @@ public:
 
 			uint64_t offset = ClusterIndex2Sector(_cluster) * super.BytesPerSector() + _offset;
 
-			if (!WriteRetry(fd, filename, offset, data, diff))
-				return false;
+			file.WriteAt(offset, data, diff);
 
 			_offset += diff;
 			_totalSize += diff;
@@ -731,29 +719,15 @@ static void PackDirectory(std::string args)
 		return;
 
 	// pack the input file
-	int infd = open(input.c_str(), O_RDONLY);
-	if (infd < 0) {
-		perror(input.c_str());
-		return;
-	}
-
+	File infile(input.c_str(), true);
 	FileWriter wr;
 
 	for (;;) {
 		char buffer[512];
 
-		auto diff = read(infd, buffer, sizeof(buffer));
-		if (diff == 0) {
-			close(infd);
+		auto diff = infile.Read(buffer, sizeof(buffer));
+		if (diff == 0)
 			break;
-		}
-		if (diff < 0) {
-			if (errno == EINTR)
-				continue;
-			perror(input.c_str());
-			close(infd);
-			return;
-		}
 
 		wr.Append(buffer, diff);
 	}
@@ -783,22 +757,20 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	filename = argv[1];
-
-	fd = open(filename, O_RDWR);
-	if (fd < 0) {
-		perror(filename);
+	try {
+		file = File(argv[1], false);
+	} catch (std::exception &e) {
+		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 
 	// read the super block
-	if (!ReadRetry(fd, filename, 0, &super, sizeof(super)))
-		goto fail;
+	file.ReadAt(0, &super, sizeof(super));
 
 	if (super.BytesPerSector() != 512) {
 		std::cerr << "Bytes per sector is " << super.BytesPerSector()
 			  << ", expected 512!" << std::endl;
-		goto fail;
+		return EXIT_FAILURE;
 	}
 
 	// read the FS info sector
@@ -806,22 +778,18 @@ int main(int argc, char **argv)
 		std::cerr << "FS Info index is " << super.ReservedSectors()
 			  << ", which is past reserved sector count ("
 			  << super.ReservedSectors() << ")" << std::endl;
-		goto fail;
+		return EXIT_FAILURE;
 	}
 
-	if (!ReadRetry(fd, filename, super.FsInfoIndex() * 512, &fsinfo, sizeof(fsinfo))) {
-		std::cerr << "Error reading FS info sector" << std::endl;
-		goto fail;
-	}
+	file.ReadAt(super.FsInfoIndex() * 512, &fsinfo, sizeof(fsinfo));
 
 	if (!fsinfo.IsValid()) {
 		std::cerr << "FS info sector is broken!" << std::endl;
-		goto fail;
+		return EXIT_FAILURE;
 	}
 
 	// read the entire FAT into memory
-	if (!fat.LoadFromImage())
-		goto fail;
+	fat.LoadFromImage();
 
 	// do the thing
 	for (;;) {
@@ -854,38 +822,20 @@ int main(int argc, char **argv)
 	}
 
 	// Update all the FATs
-	if (!fat.WriteToImage())
-		goto fail;
+	fat.WriteToImage();
 
 	// Write back super block
-	if (!WriteRetry(fd, filename, 0, &super, sizeof(super))) {
-		std::cerr << "Error updating super block" << std::endl;
-		goto fail;
-	}
+	file.WriteAt(0, &super, sizeof(super));
 
 	if (super.BackupIndex() > 0 &&
 	    super.BackupIndex() < super.ReservedSectors()) {
-		if (!WriteRetry(fd, filename, super.BackupIndex() * 512,
-				&super, sizeof(super))) {
-			std::cerr << "Error updating super block backup" << std::endl;
-			goto fail;
-		}
+		file.WriteAt(super.BackupIndex() * 512, &super, sizeof(super));
 	}
 
 	// write back FS info sector
 	fsinfo.SetNextFreeCluster(fat.FindFreeCluster());
 	fsinfo.SetNumFreeCluster(fat.NumFreeClusters());
 
-	if (!WriteRetry(fd, filename, super.FsInfoIndex() * 512,
-			&fsinfo, sizeof(fsinfo))) {
-		std::cerr << "Error updating FS info sector" << std::endl;
-		goto fail;
-	}
-
-	// cleanup
-	close(fd);
+	file.WriteAt(super.FsInfoIndex() * 512, &fsinfo, sizeof(fsinfo));
 	return EXIT_SUCCESS;
-fail:
-	close(fd);
-	return EXIT_FAILURE;
 }

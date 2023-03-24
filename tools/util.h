@@ -26,60 +26,6 @@ static void trim(std::string &line)
 		line.erase(0, count);
 }
 
-static bool ReadRetry(int fd, const char *filename,
-		      uint64_t offset, void *data, size_t size)
-{
-	while (size > 0) {
-		auto ret = pread(fd, data, size, offset);
-
-		if (ret < 0) {
-			if (errno == EINTR)
-				continue;
-			perror(filename);
-			return false;
-		}
-
-		if (ret == 0) {
-			std::cerr << filename << ": unexpected end-of-file"
-				  << std::endl;
-			return false;
-		}
-
-		data = (char *)data + ret;
-		size -= ret;
-		offset += ret;
-	}
-
-	return true;
-}
-
-static bool WriteRetry(int fd, const char *filename,
-		       uint64_t offset, const void *data, size_t size)
-{
-	while (size > 0) {
-		auto ret = pwrite(fd, data, size, offset);
-
-		if (ret < 0) {
-			if (errno == EINTR)
-				continue;
-			perror(filename);
-			return false;
-		}
-
-		if (ret == 0) {
-			std::cerr << filename << ": unexpected end-of-file"
-				  << std::endl;
-			return false;
-		}
-
-		data = (const char *)data + ret;
-		size -= ret;
-		offset += ret;
-	}
-
-	return true;
-}
-
 static std::list<std::string> SplitPath(std::string str)
 {
 	std::list<std::string> out;

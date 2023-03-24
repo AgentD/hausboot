@@ -9,6 +9,7 @@
 
 #include <type_traits>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 
 template<typename T>
