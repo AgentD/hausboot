@@ -240,6 +240,10 @@ public:
 	auto FirstCluster() const {
 		return _firstCluster;
 	}
+
+	auto BytesWritten() const {
+		return _totalSize;
+	}
 private:
 	size_t SpaceAvailable() const {
 		return super.SectorsPerCluster() * super.BytesPerSector() - _offset;
@@ -563,7 +567,18 @@ static void AppendDirectoryEntry(uint32_t cluster, size_t size, bool isDir,
 				 uint32_t fileCluster, size_t fileSize)
 {
 	FatDirent ent;
-	ent.SetName(name.c_str());
+
+	auto pos = name.find('.');
+	if (pos == std::string::npos) {
+		ent.SetName(name.c_str());
+	} else {
+		auto pre = name.substr(0, pos);
+		auto post = name.substr(pos + 1, std::string::npos);
+
+		ent.SetName(pre.c_str());
+		ent.SetExtension(post.c_str());
+	}
+
 	ent.SetClusterIndex(fileCluster);
 
 	if (isDir) {
@@ -632,6 +647,79 @@ static void CreateDirectory(std::string args)
 		return;
 
 	AppendDirectoryEntry(parent.firstCluster, actualSize, true, name, index, 0);
+}
+
+static void PackDirectory(std::string args)
+{
+	// isolate the input filename
+	size_t count = 0;
+	while (count < args.size() && !isspace(args.at(count)))
+		++count;
+
+	if (count >= args.size())
+		return;
+
+	auto input = args.substr(0, count);
+
+	while (isspace(args.at(count)))
+		++count;
+
+	args.erase(0, count);
+
+	// get the target path
+	auto path = SplitPath(args);
+	if (path.empty())
+		return;
+
+	auto name = path.back();
+	if (!IsShortName(name)) {
+		std::cerr << name << ": is not a short name (sorry)" << std::endl;
+		return;
+	}
+
+	// locate the parent directory
+	DirEntry parent;
+	size_t parentDirSize;
+
+	if (!FindParent(path, parent))
+		return;
+
+	if (!CheckEntryNotInDir(parent.firstCluster, parentDirSize, name))
+		return;
+
+	// pack the input file
+	int infd = open(input.c_str(), O_RDONLY);
+	if (infd < 0) {
+		perror(input.c_str());
+		return;
+	}
+
+	FileWriter wr;
+
+	for (;;) {
+		char buffer[512];
+
+		auto diff = read(infd, buffer, sizeof(buffer));
+		if (diff == 0) {
+			close(infd);
+			break;
+		}
+		if (diff < 0) {
+			if (errno == EINTR)
+				continue;
+			perror(input.c_str());
+			close(infd);
+			return;
+		}
+
+		wr.Append(buffer, diff);
+	}
+
+	std::cout << "Packed `" << input << "`" << std::endl;
+
+	// update the directory
+	AppendDirectoryEntry(parent.firstCluster, parentDirSize, false,
+			     name, wr.FirstCluster(), wr.BytesWritten());
 }
 
 int main(int argc, char **argv)
@@ -714,6 +802,11 @@ int main(int argc, char **argv)
 
 		if (MatchCommand(line, "mkdir")) {
 			CreateDirectory(line);
+			continue;
+		}
+
+		if (MatchCommand(line, "pack")) {
+			PackDirectory(line);
 			continue;
 		}
 
