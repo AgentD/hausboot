@@ -19,6 +19,22 @@ public:
 		__asm__ __volatile__("int $0x10" : : "a"(0x0e00 | c), "b"(0));
 	}
 
+	void WriteHex(uint32_t x) {
+		char buffer[9];
+		char *ptr = buffer + sizeof(buffer) - 1;
+
+		*(ptr--) = '\0';
+
+		for (int i = 0; i < 8; ++i) {
+			auto digit = x & 0x0F;
+			*(ptr--) = digit < 10 ? (digit + '0') :
+				(digit - 10 + 'A');
+			x >>= 4;
+		}
+
+		(*this) << (ptr + 1);
+	}
+
 	void WriteDecimal(uint32_t x) {
 		if (x > 0) {
 			char buffer[10];
@@ -56,6 +72,11 @@ public:
 		}
 
 		WriteDecimal(x);
+		return *this;
+	}
+
+	TextScreen &operator<< (void *ptr) {
+		WriteHex((uint32_t)ptr);
 		return *this;
 	}
 };

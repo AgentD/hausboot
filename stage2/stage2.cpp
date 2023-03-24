@@ -10,8 +10,7 @@
 __attribute__ ((section(".header")))
 Stage2Info header;
 
-__attribute__ ((section(".entry")))
-void main(void)
+void main(void *heapPtr)
 {
 	TextScreen screen;
 
@@ -24,7 +23,8 @@ void main(void)
 	       << "    Sector count: " << header.SectorCount() << "\r\n"
 	       << "    Boot Partition LBA: " << lba << "\r\n"
 	       << "    CHS: " << chs.Cylinder() << "/" << chs.Head() << "/"
-	       << chs.Sector() << "\r\n";
+	       << chs.Sector() << "\r\n"
+	       << "Heap start: " << heapPtr << "\r\n";
 
 	for (;;) {
 		__asm__ volatile("hlt");
