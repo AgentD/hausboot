@@ -27,20 +27,11 @@ struct DirEntry {
 };
 
 static FatSuper super;
-static FatFsInfo fsinfo;
 static File file;
 
-static size_t ClusterIndex2Sector(size_t N)
-{
-	auto FirstDataSector = super.ReservedSectors() +
-		super.NumFats() * super.SectorsPerFat();
-
-	return ((N - 2) * super.SectorsPerCluster()) + FirstDataSector;
-}
-
-class Fat {
+class FatReader {
 public:
-	uint32_t Get(size_t N) const {
+	uint32_t NextClusterInFile(uint32_t N) const {
 		auto idx = N * 4;
 
 		// XXX: std::vector<T>::at() does bounds checking, this
@@ -53,6 +44,68 @@ public:
 		return out & 0x0FFFFFFF;
 	}
 
+	void LoadFromImage() {
+		if (super.FsInfoIndex() >= super.ReservedSectors()) {
+			std::ostringstream ss;
+			ss << "FS Info index is " << super.ReservedSectors()
+			   << ", which is past reserved sector count ("
+			   << super.ReservedSectors() << ")";
+			throw std::runtime_error(ss.str());
+		}
+
+		file.ReadAt(super.FsInfoIndex() * super.BytesPerSector(),
+			    &_fsinfo, sizeof(_fsinfo));
+
+		if (!_fsinfo.IsValid())
+			throw std::runtime_error("FS info sector is broken!");
+
+		auto offset = super.ReservedSectors() * super.BytesPerSector();
+		auto size = super.SectorsPerFat() * super.BytesPerSector();
+
+		_fatRaw.resize(size);
+
+		file.ReadAt(offset, _fatRaw.data(), _fatRaw.size());
+	}
+
+	void WriteToImage() {
+		auto offset = super.ReservedSectors() * super.BytesPerSector();
+
+		for (size_t i = 0; i < super.NumFats(); ++i) {
+			file.WriteAt(offset, _fatRaw.data(), _fatRaw.size());
+
+			offset += _fatRaw.size();
+		}
+
+		_fsinfo.SetNextFreeCluster(FindFreeCluster());
+		_fsinfo.SetNumFreeCluster(NumFreeClusters());
+
+		file.WriteAt(super.FsInfoIndex() * super.BytesPerSector(),
+			     &_fsinfo, sizeof(_fsinfo));
+	}
+
+	uint32_t AllocateCluster() {
+		auto out = FindFreeCluster();
+		if (out >= 0x0FFFFFF8)
+			throw std::runtime_error("No free cluster available");
+		Set(out, 0x0FFFFFF8);
+		return out;
+	}
+
+	uint32_t AllocateCluster(uint32_t lastInFile) {
+		auto out = AllocateCluster();
+		Set(lastInFile, out);
+		return out;
+	}
+
+	uint64_t ClusterFileOffset(uint32_t index) const {
+		return super.ClusterIndex2Sector(index) *
+			super.BytesPerSector();
+	}
+
+	size_t BytesPerCluster() const {
+		return super.SectorsPerCluster() * super.BytesPerSector();
+	}
+private:
 	void Set(size_t N, uint32_t value) {
 		auto idx = N * 4;
 
@@ -69,7 +122,7 @@ public:
 		uint32_t count = 0;
 
 		for (size_t i = 0; i < (_fatRaw.size() / 4); ++i) {
-			if (Get(i) == 0)
+			if (NextClusterInFile(i) == 0)
 				++count;
 		}
 
@@ -93,36 +146,18 @@ public:
 			return 0x0FFFFFFF8;
 
 		for (size_t i = 0; i < total; ++i) {
-			if (Get(i) == 0)
+			if (NextClusterInFile(i) == 0)
 				return i;
 		}
 
 		return 0x0FFFFFFF8;
 	}
 
-	void LoadFromImage() {
-		auto offset = super.ReservedSectors() * super.BytesPerSector();
-		auto size = super.SectorsPerFat() * super.BytesPerSector();
-
-		_fatRaw.resize(size);
-
-		file.ReadAt(offset, _fatRaw.data(), _fatRaw.size());
-	}
-
-	void WriteToImage() {
-		auto offset = super.ReservedSectors() * super.BytesPerSector();
-
-		for (size_t i = 0; i < super.NumFats(); ++i) {
-			file.WriteAt(offset, _fatRaw.data(), _fatRaw.size());
-
-			offset += _fatRaw.size();
-		}
-	}
-private:
 	std::vector<uint8_t> _fatRaw;
+	FatFsInfo _fsinfo;
 };
 
-static Fat fat;
+static FatReader fat;
 
 class FileReader {
 public:
@@ -144,7 +179,7 @@ public:
 					break;
 			}
 
-			uint64_t offset = ClusterIndex2Sector(_cluster) * super.BytesPerSector() + _offset;
+			uint64_t offset = fat.ClusterFileOffset(_cluster) + _offset;
 
 			if (diff > size)
 				diff = size;
@@ -168,7 +203,7 @@ public:
 	}
 private:
 	size_t DataLeftInCluster() {
-		size_t max = super.SectorsPerCluster() * super.BytesPerSector();
+		size_t max = fat.BytesPerCluster();
 
 		size_t avail = _offset < max ? (max - _offset) : 0;
 
@@ -183,7 +218,7 @@ private:
 			return;
 		}
 
-		auto ent = fat.Get(_cluster);
+		auto ent = fat.NextClusterInFile(_cluster);
 
 		if (ent < 2 || ent >= 0x0FFFFFF8) {
 			_size = 0;
@@ -202,23 +237,18 @@ private:
 class FileWriter {
 public:
 	FileWriter() {
-		_cluster = fat.FindFreeCluster();
-		if (_cluster >= 0x0FFFFFF8)
-			throw std::runtime_error("No free cluster available");
-
-		_offset = 0;
+		_cluster = fat.AllocateCluster();
 		_firstCluster = _cluster;
+		_offset = 0;
 		_totalSize = 0;
-
-		fat.Set(_cluster, 0x0FFFFFF8);
 	}
 
 	FileWriter(uint32_t idx, uint32_t size) : _cluster(idx), _offset(size),
 						  _firstCluster(idx), _totalSize(size) {
-		auto clusterSize = super.SectorsPerCluster() * super.BytesPerSector();
+		auto clusterSize = fat.BytesPerCluster();
 
 		while (size > clusterSize) {
-			auto ent = fat.Get(_cluster);
+			auto ent = fat.NextClusterInFile(_cluster);
 
 			if (ent < 2 || ent >= 0x0FFFFFF8)
 				throw std::runtime_error("Error following cluster chain");
@@ -227,35 +257,26 @@ public:
 			size -= clusterSize;
 		}
 
-		auto ent = fat.Get(_cluster);
+		auto ent = fat.NextClusterInFile(_cluster);
 		if (ent < 0x0FFFFFF8)
 			throw std::runtime_error("Cluster chain not properly termminated");
 
 		_offset = size;
 	}
 
-	bool Append(const void *data, size_t size) {
+	void Append(const void *data, size_t size) {
 		while (size > 0) {
 			auto diff = SpaceAvailable();
 			if (diff > size)
 				diff = size;
 
 			if (diff == 0) {
-				auto next = fat.FindFreeCluster();
-				if (next >= 0x0FFFFFF8) {
-					std::cerr << "No more free clusters!" << std::endl;
-					return false;
-				}
-
-				fat.Set(_cluster, next);
-				fat.Set(next, 0x0FFFFFF8);
-
-				_cluster = next;
+				_cluster = fat.AllocateCluster(_cluster);
 				_offset = 0;
 				continue;
 			}
 
-			uint64_t offset = ClusterIndex2Sector(_cluster) * super.BytesPerSector() + _offset;
+			uint64_t offset = fat.ClusterFileOffset(_cluster) + _offset;
 
 			file.WriteAt(offset, data, diff);
 
@@ -264,8 +285,6 @@ public:
 			data = (const char *)data + diff;
 			size -= diff;
 		}
-
-		return true;
 	}
 
 	auto FirstCluster() const {
@@ -277,7 +296,7 @@ public:
 	}
 private:
 	size_t SpaceAvailable() const {
-		return super.SectorsPerCluster() * super.BytesPerSector() - _offset;
+		return fat.BytesPerCluster() - _offset;
 	}
 
 	uint32_t _cluster;
@@ -533,7 +552,7 @@ static void DumpFile(std::string args)
 	}
 }
 
-static bool InitializeEmptyDirectory(uint32_t parentIdx, uint32_t &indexOut)
+static void InitializeEmptyDirectory(uint32_t parentIdx, uint32_t &indexOut)
 {
 	FlagField<FatDirent::Flags, uint8_t> flags;
 	flags.Set(FatDirent::Flags::Directory);
@@ -555,9 +574,9 @@ static bool InitializeEmptyDirectory(uint32_t parentIdx, uint32_t &indexOut)
 
 	indexOut = data.FirstCluster();
 
-	return data.Append(&dot, sizeof(dot)) &&
-		data.Append(&dotdot, sizeof(dotdot)) &&
-		data.Append(&zero, sizeof(zero));
+	data.Append(&dot, sizeof(dot));
+	data.Append(&dotdot, sizeof(dotdot));
+	data.Append(&zero, sizeof(zero));
 }
 
 static bool FindParent(const std::list<std::string> &path, DirEntry &parent)
@@ -674,9 +693,7 @@ static void CreateDirectory(std::string args)
 
 	uint32_t index;
 
-	if (!InitializeEmptyDirectory(parent.firstCluster, index))
-		return;
-
+	InitializeEmptyDirectory(parent.firstCluster, index);
 	AppendDirectoryEntry(parent.firstCluster, actualSize, true, name, index, 0);
 }
 
@@ -767,27 +784,6 @@ int main(int argc, char **argv)
 	// read the super block
 	file.ReadAt(0, &super, sizeof(super));
 
-	if (super.BytesPerSector() != 512) {
-		std::cerr << "Bytes per sector is " << super.BytesPerSector()
-			  << ", expected 512!" << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	// read the FS info sector
-	if (super.FsInfoIndex() >= super.ReservedSectors()) {
-		std::cerr << "FS Info index is " << super.ReservedSectors()
-			  << ", which is past reserved sector count ("
-			  << super.ReservedSectors() << ")" << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	file.ReadAt(super.FsInfoIndex() * 512, &fsinfo, sizeof(fsinfo));
-
-	if (!fsinfo.IsValid()) {
-		std::cerr << "FS info sector is broken!" << std::endl;
-		return EXIT_FAILURE;
-	}
-
 	// read the entire FAT into memory
 	fat.LoadFromImage();
 
@@ -829,13 +825,9 @@ int main(int argc, char **argv)
 
 	if (super.BackupIndex() > 0 &&
 	    super.BackupIndex() < super.ReservedSectors()) {
-		file.WriteAt(super.BackupIndex() * 512, &super, sizeof(super));
+		file.WriteAt(super.BackupIndex() * super.BytesPerSector(),
+			     &super, sizeof(super));
 	}
 
-	// write back FS info sector
-	fsinfo.SetNextFreeCluster(fat.FindFreeCluster());
-	fsinfo.SetNumFreeCluster(fat.NumFreeClusters());
-
-	file.WriteAt(super.FsInfoIndex() * 512, &fsinfo, sizeof(fsinfo));
 	return EXIT_SUCCESS;
 }

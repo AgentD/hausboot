@@ -84,6 +84,15 @@ public:
 	unsigned int RootDirIndex() const {
 		return _rootDirIndex.Read();
 	}
+
+	uint32_t ClusterIndex2Sector(uint32_t N) const {
+		auto first = ReservedSectors() + NumFats() * SectorsPerFat();
+
+		if (N <= 2)
+			return first;
+
+		return ((N - 2) * SectorsPerCluster()) + first;
+	}
 private:
 	struct {
 	public:
