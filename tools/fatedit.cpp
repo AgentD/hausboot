@@ -4,10 +4,10 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "FatSuper.h"
-#include "FatFsInfo.h"
-#include "FatDirent.h"
-#include "FatDirentLong.h"
+#include "fs/FatSuper.h"
+#include "fs/FatFsInfo.h"
+#include "fs/FatDirent.h"
+#include "fs/FatDirentLong.h"
 #include "util.h"
 
 #include <cstdlib>

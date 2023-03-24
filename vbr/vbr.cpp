@@ -4,10 +4,10 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "BiosDisk.h"
-#include "TextScreen.h"
-#include "MBREntry.h"
-#include "FatSuper.h"
+#include "BIOS/BiosDisk.h"
+#include "BIOS/TextScreen.h"
+#include "part/MBREntry.h"
+#include "fs/FatSuper.h"
 #include "stage2.h"
 
 static const char *msgErrLoad = "Error loading stage 2!";

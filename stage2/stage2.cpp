@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "TextScreen.h"
+#include "BIOS/TextScreen.h"
 #include "stage2.h"
 
 __attribute__ ((section(".header")))

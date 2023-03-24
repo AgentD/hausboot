@@ -8,7 +8,7 @@
 #define MBR_ENTRY_H
 
 #include <cstdint>
-#include "CHSPacked.h"
+#include "part/CHSPacked.h"
 #include "UnalignedInt.h"
 #include "FlagField.h"
 

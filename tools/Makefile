@@ -1,10 +1,11 @@
 CXXFLAGS := -I../include
 
-HEADERS := ../include/FatSuper.h ../include/FixedLengthString.h \
+HEADERS := ../include/fs/FatSuper.h ../include/FixedLengthString.h \
 	../include/UnalignedInt.h ../include/ByteBlob.h \
-	../include/stage2.h ../include/MBREntry.h ../include/CHSPacked.h \
-	../include/FatFsInfo.h ../include/FatDirent.h \
-	../include/FatDirentLong.h ../include/BiosDisk.h util.h
+	../include/stage2.h ../include/part/MBREntry.h \
+	../include/part/CHSPacked.h \
+	../include/fs/FatFsInfo.h ../include/fs/FatDirent.h \
+	../include/fs/FatDirentLong.h ../include/BIOS/BiosDisk.h util.h
 
 .PHONY: all
 all: installfat fatedit

@@ -4,9 +4,10 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
 	-momit-leaf-frame-pointer
 
-HEADERS := ../include/TextScreen.h ../include/stage2.h ../include/MBREntry.h \
-	../include/CHSPacked.h ../include/UnalignedInt.h ../include/FlagField.h\
-	../include/BiosDisk.h
+HEADERS := ../include/BIOS/TextScreen.h ../include/stage2.h \
+	../include/part/MBREntry.h ../include/part/CHSPacked.h \
+	../include/UnalignedInt.h ../include/FlagField.h \
+	../include/BIOS/BiosDisk.h
 
 stage2.bin: stage2.ld stage2.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

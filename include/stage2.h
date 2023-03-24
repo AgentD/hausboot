@@ -10,8 +10,8 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "MBREntry.h"
-#include "BiosDisk.h"
+#include "part/MBREntry.h"
+#include "BIOS/BiosDisk.h"
 
 constexpr uint32_t Stage2Magic = 0xD0D0CACA;
 constexpr uint16_t Stage2Location = 0x1000;

@@ -4,9 +4,9 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "TextScreen.h"
-#include "MBRTable.h"
-#include "BiosDisk.h"
+#include "BIOS/TextScreen.h"
+#include "BIOS/BiosDisk.h"
+#include "part/MBRTable.h"
 
 #include <cstdint>
 

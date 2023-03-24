@@ -7,7 +7,7 @@
 #ifndef MBR_TABLE_H
 #define MBR_TABLE_H
 
-#include "MBREntry.h"
+#include "part/MBREntry.h"
 
 struct MBRTable {
 	MBREntry entries[4];

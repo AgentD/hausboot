@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "FatSuper.h"
+#include "fs/FatSuper.h"
 #include "stage2.h"
 
 #include <iostream>

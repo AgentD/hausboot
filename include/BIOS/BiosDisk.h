@@ -8,7 +8,7 @@
 #define BIOS_H
 
 #include <cstdint>
-#include "CHSPacked.h"
+#include "part/CHSPacked.h"
 
 class BiosDisk {
 public:
