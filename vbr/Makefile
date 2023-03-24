@@ -5,11 +5,11 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
 	-momit-leaf-frame-pointer
 
-HEADERS := ../include/bios.h ../include/CHSPacked.h ../include/TextScreen.h \
+HEADERS := ../include/CHSPacked.h ../include/TextScreen.h \
 	../include/MBREntry.h ../include/UnalignedInt.h \
 	../include/FlagField.h ../include/FatSuper.h \
 	../include/FixedLengthString.h ../include/ByteBlob.h \
-	../include/stage2.h
+	../include/stage2.h ../include/BiosDisk.h
 
 vbr.bin: vbr.ld abi.o vbr.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

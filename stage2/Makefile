@@ -5,7 +5,8 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-momit-leaf-frame-pointer
 
 HEADERS := ../include/TextScreen.h ../include/stage2.h ../include/MBREntry.h \
-	../include/CHSPacked.h ../include/UnalignedInt.h ../include/FlagField.h
+	../include/CHSPacked.h ../include/UnalignedInt.h ../include/FlagField.h\
+	../include/BiosDisk.h
 
 stage2.bin: stage2.ld stage2.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

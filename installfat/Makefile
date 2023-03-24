@@ -4,7 +4,7 @@ HEADERS := ../include/FatSuper.h ../include/FixedLengthString.h \
 	../include/UnalignedInt.h ../include/ByteBlob.h \
 	../include/stage2.h ../include/MBREntry.h ../include/CHSPacked.h \
 	../include/FatFsInfo.h ../include/FatDirent.h \
-	../include/FatDirentLong.h util.h
+	../include/FatDirentLong.h ../include/BiosDisk.h util.h
 
 .PHONY: all
 all: installfat fatedit

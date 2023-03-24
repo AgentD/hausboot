@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "bios.h"
+#include "BiosDisk.h"
 #include "TextScreen.h"
 #include "MBREntry.h"
 #include "FatSuper.h"
@@ -13,7 +13,7 @@
 static const char *msgErrLoad = "Error loading stage 2!";
 static const char *msgErrBroken = "Stage 2 corrupted!";
 
-void main(uint32_t edx, const MBREntry *ent)
+void main(BiosDisk disk, const MBREntry *ent)
 {
 	auto *super = (FatSuper *)0x7c00;
 	MBREntry part = *ent;
@@ -31,13 +31,12 @@ void main(uint32_t edx, const MBREntry *ent)
 	// XXX: we boldly assume the partition to be cylinder
 	// aligned, so the stupid CHS arithmetic won't overflow.
 	CHSPacked src = part.StartAddressCHS();
-	uint8_t driveNum = edx & 0x0FF;
 
 	src.SetSector(src.Sector() + 2);
 
 	auto *dst = (uint8_t *)Stage2Location;
 
-	if (!LoadSectors(driveNum, src, dst, count))
+	if (!disk.LoadSectors(src, dst, count))
 		DumpMessageAndHang(msgErrLoad);
 
 	auto *hdr = (Stage2Info *)dst;
@@ -46,7 +45,7 @@ void main(uint32_t edx, const MBREntry *ent)
 		DumpMessageAndHang(msgErrBroken);
 
 	// Enter stage 2
-	hdr->SetBiosBootDrive(driveNum);
+	hdr->SetBiosBootDrive(disk);
 	hdr->SetBootMBREntry(part);
 
 	goto *(dst + sizeof(*hdr));

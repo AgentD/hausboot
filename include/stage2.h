@@ -11,6 +11,7 @@
 #include <cstddef>
 
 #include "MBREntry.h"
+#include "BiosDisk.h"
 
 constexpr uint32_t Stage2Magic = 0xD0D0CACA;
 constexpr uint16_t Stage2Location = 0x1000;
@@ -54,11 +55,11 @@ public:
 		return (_checksum != 0) && (ComputeChecksum() == 0);
 	}
 
-	void SetBiosBootDrive(uint8_t drive) {
+	void SetBiosBootDrive(BiosDisk drive) {
 		_biosBootDrive = drive;
 	}
 
-	uint8_t BiosBootDrive() const {
+	BiosDisk BiosBootDrive() const {
 		return _biosBootDrive;
 	}
 
@@ -73,7 +74,7 @@ private:
 	const uint32_t _magic = Stage2Magic;
 	uint32_t _checksum = 0;
 	uint16_t _sectorCount = 0;
-	uint8_t _biosBootDrive = 0;
+	BiosDisk _biosBootDrive{0};
 	const uint8_t _pad0 = 0;
 	MBREntry _bootMbrEntry{};
 };

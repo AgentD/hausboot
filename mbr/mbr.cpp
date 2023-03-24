@@ -6,7 +6,7 @@
  */
 #include "TextScreen.h"
 #include "MBRTable.h"
-#include "bios.h"
+#include "BiosDisk.h"
 
 #include <cstdint>
 
@@ -19,29 +19,25 @@ static auto *bootSector = (uint16_t *)0x7C00;
 static auto *partTable = (MBRTable *)(0x0600 + 446);
 
 extern "C" {
-	[[noreturn]] void CallVbr(uint32_t edx, const MBREntry *ent);
+	[[noreturn]] void CallVbr(BiosDisk disk, const MBREntry *ent);
 }
 
-void main(uint32_t edx)
+void main(BiosDisk disk)
 {
-	uint16_t driveNumber = edx & 0x0FF;
-
 	for (const auto &it : partTable->entries) {
 		if (!it.IsBootable())
 			continue;
 
-		if (!ResetDrive(driveNumber))
+		if (!disk.Reset())
 			DumpMessageAndHang(msgResetDrv);
 
-		if (!LoadSectors(driveNumber, it.StartAddressCHS(),
-				 bootSector, 1)) {
+		if (!disk.LoadSectors(it.StartAddressCHS(), bootSector, 1))
 			DumpMessageAndHang(msgFailLoad);
-		}
 
 		if (bootSector[255] != 0xAA55)
 			DumpMessageAndHang(msgNoMagic);
 
-		CallVbr(driveNumber, &it);
+		CallVbr(disk, &it);
 	}
 
 	DumpMessageAndHang(msgNoBootPart);

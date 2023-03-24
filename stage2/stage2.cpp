@@ -22,7 +22,6 @@ void main(void)
 
 	screen << "Hello from Stage 2!\r\n"
 	       << "    Sector count: " << header.SectorCount() << "\r\n"
-	       << "    BIOS boot drive: " << header.BiosBootDrive() << "\r\n"
 	       << "    Boot Partition LBA: " << lba << "\r\n"
 	       << "    CHS: " << chs.Cylinder() << "/" << chs.Head() << "/"
 	       << chs.Sector() << "\r\n";
