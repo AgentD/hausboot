@@ -21,6 +21,14 @@ public:
 			_magic2.Read() == FatFsInfoMagic2 &&
 			_magic3.Read() == FatFsInfoMagic3;
 	}
+
+	void SetNextFreeCluster(uint32_t index) {
+		_nextFreeCluster = index;
+	}
+
+	void SetNumFreeCluster(uint32_t count) {
+		_freeClusters = count;
+	}
 private:
 	UnalignedInt<uint32_t> _magic1 = FatFsInfoMagic1;
 	ByteBlob<480> _reserved0;

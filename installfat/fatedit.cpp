@@ -65,6 +65,17 @@ public:
 		_fatRaw[idx++] = (value >> 24) & 0x0F;
 	}
 
+	uint32_t NumFreeClusters() const {
+		uint32_t count = 0;
+
+		for (size_t i = 0; i < (_fatRaw.size() / 4); ++i) {
+			if (Get(i) == 0)
+				++count;
+		}
+
+		return count;
+	}
+
 	uint32_t FindFreeCluster() {
 		auto fatSectors = super.SectorsPerFat() * super.NumFats();
 		auto total = super.SectorCount();
@@ -814,7 +825,7 @@ int main(int argc, char **argv)
 
 	// do the thing
 	for (;;) {
-		if (isatty(STDOUT_FILENO)) {
+		if (isatty(STDIN_FILENO)) {
 			std::cout << "C:\\> ";
 			std::cout.flush();
 		}
@@ -862,6 +873,9 @@ int main(int argc, char **argv)
 	}
 
 	// write back FS info sector
+	fsinfo.SetNextFreeCluster(fat.FindFreeCluster());
+	fsinfo.SetNumFreeCluster(fat.NumFreeClusters());
+
 	if (!WriteRetry(fd, filename, super.FsInfoIndex() * 512,
 			&fsinfo, sizeof(fsinfo))) {
 		std::cerr << "Error updating FS info sector" << std::endl;
