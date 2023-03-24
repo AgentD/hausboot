@@ -28,7 +28,6 @@ struct DirEntry {
 static FatSuper super;
 static FatFsInfo fsinfo;
 static const char *filename;
-static std::vector<uint8_t> _fatRaw;
 static int fd = -1;
 
 static size_t ClusterIndex2Sector(size_t N)
@@ -39,57 +38,90 @@ static size_t ClusterIndex2Sector(size_t N)
 	return ((N - 2) * super.SectorsPerCluster()) + FirstDataSector;
 }
 
-static uint32_t FatEntryRead(size_t N)
-{
-	auto idx = N * 4;
+class Fat {
+public:
+	uint32_t Get(size_t N) const {
+		auto idx = N * 4;
 
-	// XXX: std::vector<T>::at() does bounds checking, this should throw
-	// an exception if N is bonkers.
-	uint32_t out = _fatRaw.at(idx++);
-	out |= static_cast<uint32_t>(_fatRaw.at(idx++)) << 8;
-	out |= static_cast<uint32_t>(_fatRaw.at(idx++)) << 16;
-	out |= static_cast<uint32_t>(_fatRaw.at(idx++)) << 24;
+		// XXX: std::vector<T>::at() does bounds checking, this
+		// should throw an exception if N is bonkers.
+		uint32_t out = _fatRaw.at(idx++);
+		out |= static_cast<uint32_t>(_fatRaw.at(idx++)) << 8;
+		out |= static_cast<uint32_t>(_fatRaw.at(idx++)) << 16;
+		out |= static_cast<uint32_t>(_fatRaw.at(idx++)) << 24;
 
-	return out & 0x0FFFFFFF;
-}
-
-static void FatEntrySet(size_t N, uint32_t value)
-{
-	auto idx = N * 4;
-
-	if (_fatRaw.size() < 4 || idx >= (_fatRaw.size() - 3))
-		return;
-
-	_fatRaw[idx++] = value & 0xFF;
-	_fatRaw[idx++] = (value >> 8) & 0xFF;
-	_fatRaw[idx++] = (value >> 16) & 0xFF;
-	_fatRaw[idx++] = (value >> 24) & 0x0F;
-}
-
-static uint32_t FindFreeCluster(void)
-{
-	auto fatSectors = super.SectorsPerFat() * super.NumFats();
-	auto total = super.SectorCount();
-
-	if (total <= fatSectors)
-		return 0x0FFFFFFF8;
-	total -= fatSectors;
-
-	if (total <= super.ReservedSectors())
-		return 0x0FFFFFFF8;
-	total -= super.ReservedSectors();
-
-	total /= super.SectorsPerCluster();
-	if (total < 1)
-		return 0x0FFFFFFF8;
-
-	for (size_t i = 0; i < total; ++i) {
-		if (FatEntryRead(i) == 0)
-			return i;
+		return out & 0x0FFFFFFF;
 	}
 
-	return 0x0FFFFFFF8;
-}
+	void Set(size_t N, uint32_t value) {
+		auto idx = N * 4;
+
+		if (_fatRaw.size() < 4 || idx >= (_fatRaw.size() - 3))
+			return;
+
+		_fatRaw[idx++] = value & 0xFF;
+		_fatRaw[idx++] = (value >> 8) & 0xFF;
+		_fatRaw[idx++] = (value >> 16) & 0xFF;
+		_fatRaw[idx++] = (value >> 24) & 0x0F;
+	}
+
+	uint32_t FindFreeCluster() {
+		auto fatSectors = super.SectorsPerFat() * super.NumFats();
+		auto total = super.SectorCount();
+
+		if (total <= fatSectors)
+			return 0x0FFFFFFF8;
+		total -= fatSectors;
+
+		if (total <= super.ReservedSectors())
+			return 0x0FFFFFFF8;
+		total -= super.ReservedSectors();
+
+		total /= super.SectorsPerCluster();
+		if (total < 1)
+			return 0x0FFFFFFF8;
+
+		for (size_t i = 0; i < total; ++i) {
+			if (Get(i) == 0)
+				return i;
+		}
+
+		return 0x0FFFFFFF8;
+	}
+
+	bool LoadFromImage() {
+		auto offset = super.ReservedSectors() * super.BytesPerSector();
+		auto size = super.SectorsPerFat() * super.BytesPerSector();
+
+		_fatRaw.resize(size);
+
+		if (!ReadRetry(fd, filename, offset, _fatRaw.data(), _fatRaw.size())) {
+			std::cerr << "Error reading raw FAT data" << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
+	bool WriteToImage() {
+		auto offset = super.ReservedSectors() * super.BytesPerSector();
+
+		for (size_t i = 0; i < super.NumFats(); ++i) {
+			if (!WriteRetry(fd, filename, offset, _fatRaw.data(), _fatRaw.size())) {
+				std::cerr << "Error updating FAT #" << i << std::endl;
+				return false;
+			}
+
+			offset += _fatRaw.size();
+		}
+
+		return true;
+	}
+private:
+	std::vector<uint8_t> _fatRaw;
+};
+
+static Fat fat;
 
 class FileReader {
 public:
@@ -151,7 +183,7 @@ private:
 			return;
 		}
 
-		auto ent = FatEntryRead(_cluster);
+		auto ent = fat.Get(_cluster);
 
 		if (ent < 2 || ent >= 0x0FFFFFF8) {
 			_size = 0;
@@ -170,7 +202,7 @@ private:
 class FileWriter {
 public:
 	FileWriter() {
-		_cluster = FindFreeCluster();
+		_cluster = fat.FindFreeCluster();
 		if (_cluster >= 0x0FFFFFF8)
 			throw std::runtime_error("No free cluster available");
 
@@ -178,7 +210,7 @@ public:
 		_firstCluster = _cluster;
 		_totalSize = 0;
 
-		FatEntrySet(_cluster, 0x0FFFFFF8);
+		fat.Set(_cluster, 0x0FFFFFF8);
 	}
 
 	FileWriter(uint32_t idx, uint32_t size) : _cluster(idx), _offset(size),
@@ -186,7 +218,7 @@ public:
 		auto clusterSize = super.SectorsPerCluster() * super.BytesPerSector();
 
 		while (size > clusterSize) {
-			auto ent = FatEntryRead(_cluster);
+			auto ent = fat.Get(_cluster);
 
 			if (ent < 2 || ent >= 0x0FFFFFF8)
 				throw std::runtime_error("Error following cluster chain");
@@ -195,7 +227,7 @@ public:
 			size -= clusterSize;
 		}
 
-		auto ent = FatEntryRead(_cluster);
+		auto ent = fat.Get(_cluster);
 		if (ent < 0x0FFFFFF8)
 			throw std::runtime_error("Cluster chain not properly termminated");
 
@@ -209,14 +241,14 @@ public:
 				diff = size;
 
 			if (diff == 0) {
-				auto next = FindFreeCluster();
+				auto next = fat.FindFreeCluster();
 				if (next >= 0x0FFFFFF8) {
 					std::cerr << "No more free clusters!" << std::endl;
 					return false;
 				}
 
-				FatEntrySet(_cluster, next);
-				FatEntrySet(next, 0x0FFFFFF8);
+				fat.Set(_cluster, next);
+				fat.Set(next, 0x0FFFFFF8);
 
 				_cluster = next;
 				_offset = 0;
@@ -722,6 +754,16 @@ static void PackDirectory(std::string args)
 			     name, wr.FirstCluster(), wr.BytesWritten());
 }
 
+static struct {
+	const char *name;
+	void (*callback)(std::string);
+} commands[] = {
+	{ "dir", ListDirectory },
+	{ "type", DumpFile },
+	{ "mkdir", CreateDirectory },
+	{ "pack", PackDirectory },
+};
+
 int main(int argc, char **argv)
 {
 	if (argc != 2 || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")) {
@@ -767,13 +809,8 @@ int main(int argc, char **argv)
 	}
 
 	// read the entire FAT into memory
-	_fatRaw.resize(super.SectorsPerFat() * 512);
-
-	if (!ReadRetry(fd, filename, super.ReservedSectors() * 512,
-		       _fatRaw.data(), _fatRaw.size())) {
-		std::cerr << "Error reading raw FAT data" << std::endl;
+	if (!fat.LoadFromImage())
 		goto fail;
-	}
 
 	// do the thing
 	for (;;) {
@@ -790,41 +827,24 @@ int main(int argc, char **argv)
 		if (line.empty() || MatchCommand(line, "rem"))
 			continue;
 
-		if (MatchCommand(line, "dir")) {
-			ListDirectory(line);
-			continue;
+		bool found = false;
+
+		for (const auto &it : commands) {
+			if (MatchCommand(line, it.name)) {
+				it.callback(line);
+				found = true;
+				break;
+			}
 		}
 
-		if (MatchCommand(line, "type")) {
-			DumpFile(line);
-			continue;
+		if (!found) {
+			std::cerr << "Unknown command `" << line << "`" << std::endl;
 		}
-
-		if (MatchCommand(line, "mkdir")) {
-			CreateDirectory(line);
-			continue;
-		}
-
-		if (MatchCommand(line, "pack")) {
-			PackDirectory(line);
-			continue;
-		}
-
-		std::cerr << "Unknown command `" << line << "`" << std::endl;
 	}
 
 	// Update all the FATs
-	for (size_t i = 0; i < super.NumFats(); ++i) {
-		uint64_t offset = super.ReservedSectors() * 512;
-
-		offset += i * _fatRaw.size();
-
-		if (!WriteRetry(fd, filename, offset,
-				_fatRaw.data(), _fatRaw.size())) {
-			std::cerr << "Error updating FAT #" << i << std::endl;
-			goto fail;
-		}
-	}
+	if (!fat.WriteToImage())
+		goto fail;
 
 	// Write back super block
 	if (!WriteRetry(fd, filename, 0, &super, sizeof(super))) {
