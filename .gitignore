@@ -3,5 +3,5 @@
 *.img
 *.bin
 *.SYS
-installfat/installfat
-installfat/fatedit
+tools/installfat
+tools/fatedit
