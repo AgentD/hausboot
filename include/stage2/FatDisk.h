@@ -7,9 +7,10 @@
 #ifndef FAT_DISK_H
 #define FAT_DISK_H
 
+#include "stage2/Stage2Info.h"
+#include "stage2/Heap.h"
 #include "BIOS/TextScreen.h"
 #include "BIOS/BiosDisk.h"
-#include "part/MBREntry.h"
 #include "fs/FatSuper.h"
 
 static TextScreen &operator<< (TextScreen &s, CHSPacked chs)
@@ -28,12 +29,11 @@ static TextScreen &operator<< (TextScreen &s,
 
 class FatDisk {
 public:
-	bool Init(TextScreen &ts, BiosDisk bootDisk,
-		  const MBREntry &part, const FatSuper *fsSuper,
-		  void *&heapPtr) {
-		disk = bootDisk;
+	bool Init(TextScreen &ts, const Stage2Info &hdr,
+		  const FatSuper *fsSuper, Heap &heap) {
+		disk = hdr.BiosBootDrive();
 		screen = &ts;
-		partStart = part.StartAddressLBA();
+		partStart = hdr.BootMBREntry().StartAddressLBA();
 		super = fsSuper;
 
 		if (!disk.ReadDriveParameters(driveGeometry)) {
@@ -48,11 +48,9 @@ public:
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
 
-		fatWindow = (uint8_t *)heapPtr;
-		heapPtr = fatWindow + super->BytesPerSector();
-
-		dataWindow = (uint8_t *)heapPtr;
-		heapPtr = dataWindow + BytesPerCluster();
+		fatWindow = (uint8_t *)
+			heap.AllocateRaw(super->BytesPerSector());
+		dataWindow = (uint8_t *)heap.AllocateRaw(BytesPerCluster());
 		return true;
 	}
 

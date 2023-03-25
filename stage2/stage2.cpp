@@ -8,6 +8,7 @@
 #include "fs/FatDirentLong.h"
 #include "stage2/Stage2Info.h"
 #include "stage2/FatDisk.h"
+#include "stage2/Heap.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
 
@@ -108,12 +109,12 @@ struct FatFile {
 
 void main(void *heapPtr)
 {
+	Heap heap(heapPtr);
+
 	screen.Reset();
 
-	auto ret = disk.Init(screen,
-			     stage2header->BiosBootDrive(),
-			     stage2header->BootMBREntry(),
-			     (const FatSuper *)0x7C00, heapPtr);
+	auto ret = disk.Init(screen, *stage2header,
+			     (const FatSuper *)0x7C00, heap);
 
 	if (!ret)
 		goto fail;
