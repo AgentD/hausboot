@@ -8,6 +8,7 @@
 #define TEXT_SCREEN_H
 
 #include <cstdint>
+#include <cstddef>
 
 class TextScreen {
 public:
@@ -17,6 +18,12 @@ public:
 
 	void PutChar(uint8_t c) {
 		__asm__ __volatile__("int $0x10" : : "a"(0x0e00 | c), "b"(0));
+	}
+
+	void WriteCharacters(const char *str, size_t count) {
+		while (count--) {
+			PutChar(*(str++));
+		}
 	}
 
 	void WriteHex(uint32_t x) {

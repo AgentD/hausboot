@@ -28,8 +28,6 @@ public:
 	}
 
 	void NameToString(char buffer[14]) const {
-		size_t idx = 0;
-
 		char *ptr = Stringify(_namePart, 5, buffer);
 		ptr = Stringify(_namePart2, 6, ptr);
 		ptr = Stringify(_namePart3, 2, ptr);
