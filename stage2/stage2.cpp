@@ -21,6 +21,12 @@ static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
 static FatDisk disk;
 
+struct FatFile {
+	uint32_t cluster;
+	uint32_t size;
+	FlagField<FatDirent::Flags, uint8_t> flags;
+};
+
 static bool StrEqual(const char *a, const char *b)
 {
 	for (;;) {
@@ -34,78 +40,45 @@ static bool StrEqual(const char *a, const char *b)
 	return true;
 }
 
-struct FatFile {
-	uint32_t cluster;
-	uint32_t size;
-	FlagField<FatDirent::Flags, uint8_t> flags;
+static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
+{
+	bool found = false;
 
-	bool FindInDirectory(const char *name, FatFile &out) const {
-		uint32_t index = cluster;
+	auto cb = [name, &found, &out](FatDirent &ent) {
+		char buffer[13];
+		ent.NameToString(buffer);
 
-		do {
-			uint32_t next;
+		if (!StrEqual(buffer, name))
+			return FatDisk::ScanVerdict::Ok;
 
-			if (!disk.LoadDataCluster(index))
-				return false;
+		out.cluster = ent.ClusterIndex();
+		out.size = ent.Size();
+		out.flags = ent.EntryFlags();
+		found = true;
+		return FatDisk::ScanVerdict::Stop;
+	};
 
-			if (!disk.ReadFatIndex(index, next))
-				return false;
+	if (!disk.ForEachDirectoryEntry(in.cluster, cb))
+		return false;
 
-			auto *entS = (FatDirent *)disk.dataWindow;
-			auto max = disk.BytesPerCluster() / sizeof(*entS);
-
-			for (decltype(max) i = 0; i < max; ++i) {
-				if (entS[i].IsLastInList())
-					return true;
-				if (entS[i].IsDummiedOut())
-					continue;
-				if (entS[i].EntryFlags().IsSet(FatDirent::Flags::LongFileName))
-					continue;
-
-				char buffer[13];
-				entS[i].NameToString(buffer);
-
-				if (StrEqual(buffer, name)) {
-					out.cluster = entS[i].ClusterIndex();
-					out.size = entS[i].Size();
-					out.flags = entS[i].EntryFlags();
-					return true;
-				}
-			}
-
-			index = next;
-		} while (index < 0x0FFFFFF0);
-
-		screen << name << ": no such file or directory" << "\r\n";
+	if (!found) {
+		screen << name << ": no such file or directory"
+		       << "\r\n";
 		return false;
 	}
 
-	bool DumpToScreen() {
-		uint32_t index = cluster;
-		uint32_t fileSize = size;
+	return true;
+}
 
-		while (fileSize > 0 && index < 0x0FFFFFF0) {
-			uint32_t next;
+static bool DumpToScreen(FatFile &f)
+{
+	auto cb = [](void *data, uint32_t size) {
+		screen.WriteCharacters((char *)data, size);
+		return FatDisk::ScanVerdict::Ok;
+	};
 
-			if (!disk.LoadDataCluster(index))
-				return false;
-
-			if (!disk.ReadFatIndex(index, next))
-				return false;
-
-			auto diff = disk.BytesPerCluster();
-			if (diff > fileSize)
-				diff = fileSize;
-
-			screen.WriteCharacters((char *)disk.dataWindow, diff);
-
-			fileSize -= diff;
-			index = next;
-		}
-
-		return true;
-	}
-};
+	return disk.ForEachClusterInChain(f.cluster, f.size, cb);
+}
 
 void main(void *heapPtr)
 {
@@ -125,10 +98,10 @@ void main(void *heapPtr)
 		finfo.size = 0;
 		finfo.flags.Set(FatDirent::Flags::Directory);
 
-		if (!finfo.FindInDirectory(bootConfigName, finfo))
+		if (!FindInDirectory(finfo, bootConfigName, finfo))
 			goto fail;
 
-		if (!finfo.DumpToScreen())
+		if (!DumpToScreen(finfo))
 			goto fail;
 	}
 fail:
