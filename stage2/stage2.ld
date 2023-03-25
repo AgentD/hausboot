@@ -13,6 +13,10 @@ SECTIONS
 		*(.text.*)
 		*(.rodata)
 		*(.rodata.*)
+		*(.data)
+		*(.data.*)
+		*(.bss)
+		*(.bss.*)
 		FILL(0)
 		. = ALIGN(512);
 		__stop_stage2 = .;
