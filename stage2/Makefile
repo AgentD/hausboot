@@ -10,7 +10,8 @@ HEADERS := ../include/BIOS/TextScreen.h ../include/stage2.h \
 	../include/UnalignedInt.h ../include/FlagField.h \
 	../include/BIOS/BiosDisk.h ../include/fs/FatSuper.h \
 	../include/FixedLengthString.h ../include/ByteBlob.h \
-	../include/fs/FatDirent.h ../include/fs/FatDirentLong.h
+	../include/fs/FatDirent.h ../include/fs/FatDirentLong.h \
+	FatDisk.h
 
 stage2.bin: stage2.ld abi.o stage2.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)
