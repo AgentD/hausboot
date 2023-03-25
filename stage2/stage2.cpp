@@ -10,6 +10,21 @@
 __attribute__ ((section(".header")))
 Stage2Info header;
 
+static uint16_t cylinders = 0;
+static uint16_t sectorsPerTrack = 0;
+static uint16_t headsPerCylinder = 0;
+
+static CHSPacked LBA2CHS(uint32_t lba)
+{
+	CHSPacked out;
+
+	out.SetCylinder(lba / ((uint32_t)headsPerCylinder * sectorsPerTrack));
+	out.SetHead((lba / sectorsPerTrack) % headsPerCylinder);
+	out.SetSector((lba % sectorsPerTrack) + 1);
+
+	return out;
+}
+
 void main(void *heapPtr)
 {
 	TextScreen screen;
@@ -26,6 +41,17 @@ void main(void *heapPtr)
 	       << chs.Sector() << "\r\n"
 	       << "Heap start: " << heapPtr << "\r\n";
 
+	auto disk = header.BiosBootDrive();
+
+	if (!disk.ReadDriveParameters(headsPerCylinder, cylinders, sectorsPerTrack)) {
+		screen << "Error querying disk geometry!\r\n";
+		goto fail;
+	}
+
+	screen << "Disk geometry:\r\n"
+	       << "    Heads/Cylinder: " << headsPerCylinder << "\r\n"
+	       << "    Sectors/Track: " << sectorsPerTrack << "\r\n";
+fail:
 	for (;;) {
 		__asm__ volatile("hlt");
 	}
