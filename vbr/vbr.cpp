@@ -4,11 +4,11 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
+#include "stage2/Stage2Info.h"
 #include "BIOS/BiosDisk.h"
 #include "BIOS/TextScreen.h"
 #include "part/MBREntry.h"
 #include "fs/FatSuper.h"
-#include "stage2.h"
 
 static const char *msgErrLoad = "Error loading stage 2!";
 static const char *msgErrBroken = "Stage 2 corrupted!";

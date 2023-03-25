@@ -6,10 +6,10 @@
  */
 #include "BIOS/TextScreen.h"
 #include "fs/FatDirentLong.h"
+#include "stage2/Stage2Info.h"
+#include "stage2/FatDisk.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
-#include "FatDisk.h"
-#include "stage2.h"
 
 __attribute__ ((section(".header")))
 uint8_t headerBlob[sizeof(Stage2Info)];

@@ -4,10 +4,10 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
+#include "stage2/Stage2Info.h"
 #include "fs/FatFsInfo.h"
 #include "fs/FatSuper.h"
 #include "host/File.h"
-#include "stage2.h"
 
 #include <iostream>
 #include <cstring>

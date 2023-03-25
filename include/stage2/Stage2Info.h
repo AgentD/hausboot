@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: ISC */
 /*
- * stage2.h
+ * Stage2Info.h
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
@@ -16,7 +16,7 @@
 constexpr uint32_t Stage2Magic = 0xD0D0CACA;
 constexpr uint16_t Stage2Location = 0x1000;
 
-struct Stage2Info {
+class Stage2Info {
 public:
 	void SetSectorCount(uint32_t size) {
 		_sectorCount = size / 512;
