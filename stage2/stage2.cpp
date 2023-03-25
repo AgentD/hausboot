@@ -16,6 +16,7 @@ __attribute__ ((section(".header")))
 uint8_t headerBlob[sizeof(Stage2Info)];
 
 static const char *bootConfigName = "BOOT.CFG";
+static size_t bootConfigMaxSize = 4096;
 
 static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
@@ -38,6 +39,17 @@ static bool StrEqual(const char *a, const char *b)
 		++b;
 	}
 	return true;
+}
+
+static bool IsSpace(int x)
+{
+	return x == ' ' || x == '\t';
+}
+
+static bool IsAlnum(int x)
+{
+	return (x >= 'A' && x <= 'Z') || (x >= 'a' && x <= 'z') ||
+		(x >= '0' && x <= '9');
 }
 
 static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
@@ -70,40 +82,96 @@ static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
 	return true;
 }
 
-static bool DumpToScreen(FatFile &f)
+static bool LoadFileToBuffer(FatFile &f, void *buffer)
 {
-	auto cb = [](void *data, uint32_t size) {
-		screen.WriteCharacters((char *)data, size);
+	auto cb = [&buffer](void *data, uint32_t size) {
+		for (uint32_t i = 0; i < size; ++i)
+			((uint8_t *)buffer)[i] = ((uint8_t *)data)[i];
+
+		buffer = (uint8_t *)buffer + size;
 		return FatDisk::ScanVerdict::Ok;
 	};
 
 	return disk.ForEachClusterInChain(f.cluster, f.size, cb);
 }
 
+static void RunScript(char *ptr)
+{
+	while (*ptr != '\0') {
+		// isolate the current line
+		char *line = ptr;
+
+		while (*ptr != '\0' && *ptr != '\n')
+			++ptr;
+
+		if (*ptr == '\n')
+			*(ptr++) = '\0';
+
+		// isolate command string
+		while (*line == ' ' || *line == '\t')
+			++line;
+
+		if (!IsAlnum(*line))
+			continue;
+
+		const char *cmd = line;
+
+		while (IsAlnum(*line))
+			++line;
+
+		if (!IsSpace(*line))
+			continue;
+
+		*(line++) = '\0';
+
+		while (IsSpace(*line))
+			++line;
+
+		const char *arg = line;
+
+		// TODO
+		screen << "`" << cmd <<  "` `" << arg << "`" << "\r\n";
+	}
+}
+
 void main(void *heapPtr)
 {
 	Heap heap(heapPtr);
+	char *fileBuffer;
+	FatFile finfo;
 
+	// initialization
 	screen.Reset();
 
 	auto ret = disk.Init(screen, *stage2header,
 			     (const FatSuper *)0x7C00, heap);
-
 	if (!ret)
 		goto fail;
 
-	{
-		FatFile finfo;
-		finfo.cluster = disk.RootDirIndex();
-		finfo.size = 0;
-		finfo.flags.Set(FatDirent::Flags::Directory);
+	// find the boot loader config file
+	finfo.cluster = disk.RootDirIndex();
+	finfo.size = 0;
+	finfo.flags.Set(FatDirent::Flags::Directory);
 
-		if (!FindInDirectory(finfo, bootConfigName, finfo))
-			goto fail;
+	if (!FindInDirectory(finfo, bootConfigName, finfo))
+		goto fail;
 
-		if (!DumpToScreen(finfo))
-			goto fail;
+	if (finfo.size > bootConfigMaxSize) {
+		screen << bootConfigName << ": too big (max size: "
+		       << bootConfigMaxSize << ")" << "\r\n";
+		goto fail;
 	}
+
+	// load it into memory
+	fileBuffer = (char *)heap.AllocateRaw(finfo.size + 1);
+
+	if (!LoadFileToBuffer(finfo, fileBuffer))
+		goto fail;
+
+	fileBuffer[finfo.size] = '\0';
+
+	// interpret it
+	RunScript(fileBuffer);
 fail:
 	for (;;) {
 		__asm__ volatile("hlt");
