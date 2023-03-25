@@ -15,6 +15,7 @@ fatpart.img: tools/installfat tools/fatedit \
 			   --stage2 "stage2/stage2.bin"
 	echo "mkdir BOOT" | ./tools/fatedit $@
 	echo "pack kernel/KRNL386.SYS BOOT/KRNL386.SYS" | ./tools/fatedit $@
+	echo "pack boot.cfg BOOT.CFG" | ./tools/fatedit $@
 
 kernel/KRNL386.SYS:
 	$(MAKE) -C kernel
