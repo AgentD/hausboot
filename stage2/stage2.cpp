@@ -5,54 +5,123 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "BIOS/TextScreen.h"
+#include "fs/FatSuper.h"
 #include "stage2.h"
 
 __attribute__ ((section(".header")))
 uint8_t headerBlob[sizeof(Stage2Info)];
 
-static uint16_t cylinders = 0;
-static uint16_t sectorsPerTrack = 0;
-static uint16_t headsPerCylinder = 0;
+static auto *stage2header = (Stage2Info *)headerBlob;
+static TextScreen screen;
+static BiosDisk::DriveGeometry driveGeometry;
+static auto *fatSuper = (FatSuper *)0x7C00;
 
-static CHSPacked LBA2CHS(uint32_t lba)
+static uint8_t *fatWindow;
+static uint8_t *dataWindow;
+
+static TextScreen &operator<< (TextScreen &s, CHSPacked chs)
 {
-	CHSPacked out;
+	s << chs.Cylinder() << "/" << chs.Head() << "/" << chs.Sector();
+	return s;
+}
 
-	out.SetCylinder(lba / ((uint32_t)headsPerCylinder * sectorsPerTrack));
-	out.SetHead((lba / sectorsPerTrack) % headsPerCylinder);
-	out.SetSector((lba % sectorsPerTrack) + 1);
+static TextScreen &operator<< (TextScreen &s,
+			       const BiosDisk::DriveGeometry &geom)
+{
+	s << geom.cylinders << "/" << geom.headsPerCylinder << "/"
+	  << geom.sectorsPerTrack;
+	return s;
+}
 
-	return out;
+static bool LoadFatSector(uint32_t index)
+{
+	if (index >= fatSuper->SectorsPerFat()) {
+		screen << "[BUG] tried to access out-of-bounds FAT sector: "
+		       << index << " >= "
+		       << fatSuper->SectorsPerFat() << "\r\n";
+		return false;
+	}
+
+	index += stage2header->BootMBREntry().StartAddressLBA();
+	index += fatSuper->ReservedSectors();
+
+	auto chs = driveGeometry.LBA2CHS(index);
+	auto disk = stage2header->BiosBootDrive();
+
+	if (!disk.LoadSectors(chs, fatWindow, 1)) {
+		screen << "Error loading disk sector " << index
+		       << " while accessing FAT (CHS: " << chs
+		       << ")" << "\r\n";
+		return false;
+	}
+
+	return true;
+}
+
+static bool LoadDataCluster(uint32_t index)
+{
+	if (index < 2) {
+		screen << "[BUG] tried to access data cluster < 2"
+		       << "\r\n";
+		return false;
+	}
+
+	auto sector = stage2header->BootMBREntry().StartAddressLBA();
+	sector += fatSuper->ClusterIndex2Sector(index);
+
+	auto chs = driveGeometry.LBA2CHS(sector);
+	auto disk = stage2header->BiosBootDrive();
+
+	if (!disk.LoadSectors(chs, dataWindow,
+			      fatSuper->SectorsPerCluster())) {
+		screen << "Error loading cluster " << index
+		       << " from sector " << sector
+		       << " (CHS: " << chs << ")" << "\r\n";
+		return false;
+	}
+
+	return true;
 }
 
 void main(void *heapPtr)
 {
-	auto *header = (Stage2Info *)headerBlob;
-	TextScreen screen;
-
 	screen.Reset();
 
-	auto lba = header->BootMBREntry().StartAddressLBA();
-	auto chs = header->BootMBREntry().StartAddressCHS();
+	// allocate sliding windows to read from the disk
+	fatWindow = (uint8_t *)heapPtr;
+	heapPtr = fatWindow + fatSuper->BytesPerSector();
 
-	screen << "Hello from Stage 2!\r\n"
-	       << "    Sector count: " << header->SectorCount() << "\r\n"
-	       << "    Boot Partition LBA: " << lba << "\r\n"
-	       << "    CHS: " << chs.Cylinder() << "/" << chs.Head() << "/"
-	       << chs.Sector() << "\r\n"
-	       << "Heap start: " << heapPtr << "\r\n";
+	dataWindow = (uint8_t *)heapPtr;
+	heapPtr = dataWindow +
+		fatSuper->BytesPerSector() * fatSuper->SectorsPerCluster();
 
-	auto disk = header->BiosBootDrive();
+	// Get drive geometry
+	auto disk = stage2header->BiosBootDrive();
 
-	if (!disk.ReadDriveParameters(headsPerCylinder, cylinders,
-				      sectorsPerTrack)) {
+	if (!disk.ReadDriveParameters(driveGeometry)) {
 		screen << "Error querying disk geometry!\r\n";
 		goto fail;
 	}
 
-	screen << "Disk geometry:\r\n"
-	       << "    Heads/Cylinder: " << headsPerCylinder << "\r\n"
-	       << "    Sectors/Track: " << sectorsPerTrack << "\r\n";
+	screen << "Drive geometry (C/H/S): " << driveGeometry << "\r\n";
+
+	// Test load a data cluster and a FAT sector
+	if (!LoadDataCluster(3))
+		goto fail;
+
+	if (!LoadFatSector(0))
+		goto fail;
+
+	// DUMP
+	for (int i = 0; i < 128; ++i) {
+		screen.WriteHex(((uint32_t *)dataWindow)[i]);
+
+		if ((i % 8) == 7) {
+			screen << "\r\n";
+		} else {
+			screen << " ";
+		}
+	}
 fail:
 	for (;;) {
 		__asm__ volatile("hlt");

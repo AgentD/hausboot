@@ -43,8 +43,24 @@ public:
 		return error == 0;
 	}
 
-	bool ReadDriveParameters(uint16_t &heads, uint16_t &cylinders,
-				 uint16_t &sectorsPerTrack) const {
+	struct DriveGeometry {
+		uint16_t cylinders;
+		uint16_t headsPerCylinder;
+		uint16_t sectorsPerTrack;
+
+		CHSPacked LBA2CHS(uint32_t lba) const {
+			CHSPacked out;
+
+			out.SetCylinder(lba / ((uint32_t)headsPerCylinder *
+					       sectorsPerTrack));
+			out.SetHead((lba / sectorsPerTrack) % headsPerCylinder);
+			out.SetSector((lba % sectorsPerTrack) + 1);
+
+			return out;
+		}
+	};
+
+	bool ReadDriveParameters(DriveGeometry &out) const {
 		uint16_t cxOut, dxOut;
 		int error;
 		__asm__ __volatile__ ("int $0x13\r\n"
@@ -56,9 +72,9 @@ public:
 		if (error != 0)
 			return false;
 
-		cylinders = (((cxOut & 0x0C0) << 2) | ((cxOut >> 8) & 0x0FF)) + 1;
-		sectorsPerTrack = cxOut & 0x3F;
-		heads = ((dxOut >> 8) & 0x0FF) + 1;
+		out.cylinders = (((cxOut & 0x0C0) << 2) | ((cxOut >> 8) & 0x0FF)) + 1;
+		out.sectorsPerTrack = cxOut & 0x3F;
+		out.headsPerCylinder = ((dxOut >> 8) & 0x0FF) + 1;
 		return true;
 	}
 private:
