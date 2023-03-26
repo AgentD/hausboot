@@ -95,6 +95,42 @@ static bool LoadFileToBuffer(FatFile &f, void *buffer)
 	return disk.ForEachClusterInChain(f.cluster, f.size, cb);
 }
 
+/*****************************************************************************/
+
+static bool CmdEcho(const char *line)
+{
+	screen << line << "\r\n";
+	return true;
+}
+
+static bool CmdInfo(const char *what)
+{
+	if (StrEqual(what, "disk")) {
+		auto geom = disk.DriveGeometry();
+		auto lba = stage2header->BootMBREntry().StartAddressLBA();
+		auto chs = geom.LBA2CHS(lba);
+
+		screen << "Boot disk: " << "\r\n"
+		       << "    geometry (C/H/S): " << geom << "\r\n"
+		       << "Boot partition: " << "\r\n"
+		       << "    LBA: " << lba << "\r\n"
+		       << "    CHS: " << chs << "\r\n";
+
+		return true;
+	}
+
+	screen << "Unknown info type: " << what << "\r\n";
+	return false;
+}
+
+static const struct {
+	const char *name;
+	bool (*callback)(const char *arg);
+} commands[] = {
+	{ "echo", CmdEcho },
+	{ "info", CmdInfo },
+};
+
 static void RunScript(char *ptr)
 {
 	while (*ptr != '\0') {
@@ -119,7 +155,7 @@ static void RunScript(char *ptr)
 		while (IsAlnum(*line))
 			++line;
 
-		if (!IsSpace(*line))
+		if (!IsSpace(*line) || *cmd == '\0' || *cmd == '#')
 			continue;
 
 		*(line++) = '\0';
@@ -129,10 +165,26 @@ static void RunScript(char *ptr)
 
 		const char *arg = line;
 
-		// TODO
-		screen << "`" << cmd <<  "` `" << arg << "`" << "\r\n";
+		// dispatch
+		bool found = false;
+
+		for (const auto &it : commands) {
+			if (StrEqual(it.name, cmd)) {
+				if (!it.callback(arg))
+					return;
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			screen << "Error, unknown command: " << cmd << "\r\n";
+			return;
+		}
 	}
 }
+
+/*****************************************************************************/
 
 void main(void *heapPtr)
 {

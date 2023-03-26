@@ -42,9 +42,6 @@ public:
 			return false;
 		}
 
-		(*screen) << "Drive geometry (C/H/S): "
-			  << driveGeometry << "\r\n";
-
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
 
@@ -119,6 +116,10 @@ public:
 		};
 
 		return ForEachClusterInChain(index, 0xFFFFFFFF, wrap);
+	}
+
+	const auto &DriveGeometry() const {
+		return driveGeometry;
 	}
 private:
 	bool LoadDataCluster(uint32_t index) {
