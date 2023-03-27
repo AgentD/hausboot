@@ -17,6 +17,14 @@ extern "C" {
 
 class MemoryMapEntry {
 public:
+	enum class MemType : uint32_t {
+		Usable = 1,
+		Reserved = 2,
+		ACPI = 3,
+		Preserve = 4,
+		Broken = 5,
+	};
+
 	int Load(uint32_t &ebxInOut) {
 		static MemoryMapEntry temp;
 
@@ -39,8 +47,11 @@ public:
 		return _size.Read();
 	}
 
-	auto Type() const {
-		return _type.Read();
+	MemType Type() const {
+		auto value = _type.Read();
+
+		return value < 1 || value > 5 ?
+			MemType::Broken : (MemType)value;
 	}
 private:
 	UnalignedInt<uint64_t> _base;

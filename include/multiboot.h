@@ -11,33 +11,23 @@
 
 #include "FlagField.h"
 #include "UnalignedInt.h"
+#include "BIOS/MemoryMap.h"
 
 static_assert(sizeof(void *) == sizeof(uint32_t),
 	      "Multiboot is usable for 32 bit x86 code only!");
 
 class MultiBootMmap {
 public:
-	enum class Type : uint32_t {
-		Usable = 1,
-		Reserved = 2,
-		ACPI = 3,
-		Preserve = 4,
-		Broken = 5,
-	};
-
-	Type RegionType() const {
-		if (_type.Read() < 1 || _type.Read() > 5)
-			return Type::Broken;
-
-		return static_cast<Type>(_type.Read());
+	auto Type() const {
+		return _wrapped.Type();
 	}
 
 	auto BaseAddress() const {
-		return _baseAddress.Read();
+		return _wrapped.BaseAddress();
 	}
 
-	auto RegionSize() const {
-		return _length.Read();
+	auto Size() const {
+		return _wrapped.Size();
 	}
 
 	const auto *Next() const {
@@ -47,9 +37,7 @@ public:
 	}
 private:
 	UnalignedInt<uint32_t> _size;
-	UnalignedInt<uint64_t> _baseAddress;
-	UnalignedInt<uint64_t> _length;
-	UnalignedInt<uint32_t> _type;
+	MemoryMapEntry _wrapped;
 };
 
 static_assert(sizeof(MultiBootMmap) == 24);

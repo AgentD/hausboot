@@ -34,6 +34,23 @@ struct FatFile {
 	FlagField<FatDirent::Flags, uint8_t> flags;
 };
 
+static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
+{
+	const char *str = "unknown";
+
+	switch (type) {
+	case MemoryMapEntry::MemType::Usable: str = "free"; break;
+	case MemoryMapEntry::MemType::Reserved: str = "reserved"; break;
+	case MemoryMapEntry::MemType::ACPI: str = "ACPI"; break;
+	case MemoryMapEntry::MemType::Preserve: str = "preserve"; break;
+	default:
+		break;
+	}
+
+	s << str;
+	return s;
+}
+
 static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
 {
 	bool found = false;
