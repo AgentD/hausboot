@@ -12,12 +12,14 @@
 #include "stage2/Heap.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
+#include "multiboot.h"
 
 __attribute__ ((section(".header")))
 uint8_t headerBlob[sizeof(Stage2Info)];
 
 static const char *bootConfigName = "BOOT.CFG";
 static size_t bootConfigMaxSize = 4096;
+static size_t multiBootMaxSearch = 8192;
 
 static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
@@ -54,6 +56,30 @@ static bool IsAlnum(int x)
 		(x >= '0' && x <= '9');
 }
 
+static bool IsValidFatChar(int c)
+{
+	// Must be printable ASCII
+	if (c < 0x20 || c > 0x7E)
+		return false;
+
+	// Must be shouty case
+	if (c >= 0x61 && c <= 0x7A)
+		return false;
+
+	// Must not be :;<=>?
+	if (c >= 0x3A && c <= 0x3F)
+		return false;
+
+	// more special chars to exclude
+	if (c == '|' || c == '\\' || c == '/' || c == '"' || c == '*')
+		return false;
+
+	if (c == '+' || c == ',' || c == '[' || c == ']')
+		return false;
+
+	return true;
+}
+
 static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
 {
 	bool found = false;
@@ -79,6 +105,44 @@ static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
 		screen << name << ": no such file or directory"
 		       << "\r\n";
 		return false;
+	}
+
+	return true;
+}
+
+static bool FindByPath(const char *name, FatFile &out)
+{
+	out.cluster = disk.RootDirIndex();
+	out.size = 0;
+	out.flags.Clear();
+	out.flags.Set(FatDirent::Flags::Directory);
+
+	while (*name != '\0') {
+		if (*name == '/' || *name == '\\') {
+			while (*name == '/' || *name == '\\')
+				++name;
+			continue;
+		}
+
+		char name8_3[8 + 1 + 3 + 1];
+		int count = 0;
+
+		while (*name != '\0' && *name != '/' && *name != '\\') {
+			if (count >= (8 + 1 + 3))
+				return false;
+
+			if (!IsValidFatChar(*name))
+				return false;
+
+			name8_3[count++] = *(name++);
+		}
+
+		name8_3[count] = '\0';
+		if (count == 0)
+			return false;
+
+		if (!FindInDirectory(out, name8_3, out))
+			return false;
 	}
 
 	return true;
@@ -139,12 +203,76 @@ static bool CmdInfo(const char *what)
 	return false;
 }
 
+static bool CmdMultiboot(const char *path)
+{
+	FatFile finfo;
+
+	screen << "multiboot: ";
+
+	// Try to locate the file
+	if (!FindByPath(path, finfo)) {
+		screen << "cannot find `" << path << "`" << "\r\n";
+		return false;
+	}
+
+	screen << "found `" << path
+	       << "`: cluster " << finfo.cluster
+	       << ", size: " << finfo.size << "\r\n";
+
+	// Sift through the file to find the header
+	MultiBootHeader hdr;
+	bool found = false;
+
+	auto scanSize = finfo.size > multiBootMaxSearch ?
+		multiBootMaxSearch : finfo.size;
+
+	if (scanSize >= sizeof(hdr))
+		scanSize -= sizeof(hdr);
+
+	auto sarchCb = [&hdr, &found](void *data, uint32_t size) {
+		if (size >= sizeof(hdr))
+			size -= sizeof(hdr);
+
+		for (uint32_t i = 0; i < (size / 4); ++i) {
+			const auto *tryHdr = (MultiBootHeader *)((uint32_t *)data + i);
+
+			if (tryHdr->IsValid()) {
+				hdr = *tryHdr;
+				found = true;
+				return FatDisk::ScanVerdict::Stop;
+			}
+		}
+		return FatDisk::ScanVerdict::Ok;
+	};
+
+	if (!disk.ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
+		return false;
+
+	if (hdr.Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
+		screen << "Error: "
+		       << "video mode info required (unsupported)!" << "\r\n";
+		return false;
+	}
+
+	if (!hdr.Flags().IsSet(MultiBootHeader::KernelFlags::HaveLayoutInfo)) {
+		screen << "Error: "
+		       << "No memory layout provided (unsupported)!" << "\r\n";
+		return false;
+	}
+
+	screen << "Valid multiboot header found!" << "\r\n";
+
+	// TODO: load the darn thing already!
+	return true;
+}
+
 static const struct {
 	const char *name;
 	bool (*callback)(const char *arg);
 } commands[] = {
 	{ "echo", CmdEcho },
 	{ "info", CmdInfo },
+	{ "multiboot", CmdMultiboot },
 };
 
 static void RunScript(char *ptr)
@@ -226,7 +354,7 @@ void main(void *heapPtr)
 	finfo.size = 0;
 	finfo.flags.Set(FatDirent::Flags::Directory);
 
-	if (!FindInDirectory(finfo, bootConfigName, finfo))
+	if (!FindByPath(bootConfigName, finfo))
 		goto fail;
 
 	if (finfo.size > bootConfigMaxSize) {

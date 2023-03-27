@@ -152,6 +152,35 @@ private:
 
 static_assert(sizeof(MultiBootInfo) == 128);
 
+class MultiBootHeader {
+public:
+	enum class KernelFlags : uint32_t {
+		Force4KAlign = 0x00000001,
+		WantMemoryMap = 0x00000002,
+		WantVidmode = 0x00000004,
+		HaveLayoutInfo = 0x00010000,
+	};
+
+	bool IsValid() const {
+		return _magic == 0x1BADB002 &&
+			_checksum == (~(_magic + _flags.RawValue()) + 1);
+	}
+
+	auto Flags() const {
+		return _flags;
+	}
+private:
+	uint32_t _magic;
+	FlagField<KernelFlags, uint32_t> _flags;
+	uint32_t _checksum;
+	uint32_t _hdrAddr;
+	uint32_t _loadAddr;
+	uint32_t _loadEndAddr;
+	uint32_t _bssEndAddr;
+};
+
+static_assert(sizeof(MultiBootHeader) == 28);
+
 extern "C" {
 	void multiboot_main(const MultiBootInfo *info);
 };
