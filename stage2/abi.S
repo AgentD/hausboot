@@ -15,6 +15,6 @@ _start:
 	mov	%ax, %es
 	mov	%ax, %ss
 	mov	$__stop_stage2, %esp
-	add	$512, %esp
+	add	$1024, %esp
 	pushl	%esp
 	calll	main

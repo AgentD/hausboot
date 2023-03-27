@@ -32,8 +32,11 @@ mbr/mbr.bin:
 vbr/vbr.bin:
 	$(MAKE) -C vbr
 
-stage2/stage2.bin:
+stage2/stage2.bin: lib/BIOS/libBIOS.a
 	$(MAKE) -C stage2
+
+lib/BIOS/libBIOS.a:
+	$(MAKE) -C lib/BIOS
 
 .PHONY: clean
 clean:
@@ -42,6 +45,7 @@ clean:
 	$(MAKE) -C stage2 clean
 	$(MAKE) -C tools clean
 	$(MAKE) -C kernel clean
+	$(MAKE) -C lib/BIOS clean
 	$(RM) *.img
 
 .PHONY: runqemu

@@ -5,6 +5,7 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "BIOS/TextScreen.h"
+#include "BIOS/MemoryMap.h"
 #include "fs/FatDirentLong.h"
 #include "stage2/Stage2Info.h"
 #include "stage2/FatDisk.h"
@@ -21,6 +22,7 @@ static size_t bootConfigMaxSize = 4096;
 static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
 static FatDisk disk;
+static MemoryMap<32> mmap;
 
 struct FatFile {
 	uint32_t cluster;
@@ -119,6 +121,20 @@ static bool CmdInfo(const char *what)
 		return true;
 	}
 
+	if (StrEqual(what, "memory")) {
+		screen << "Memory:" << "\r\n";
+
+		for (const auto &it : mmap) {
+			screen << "    base: ";
+			screen.WriteHex(it.BaseAddress());
+			screen << ", size: ";
+			screen.WriteHex(it.Size());
+			screen << ", type: " << it.Type() << "\r\n";
+		}
+
+		return true;
+	}
+
 	screen << "Unknown info type: " << what << "\r\n";
 	return false;
 }
@@ -195,10 +211,15 @@ void main(void *heapPtr)
 	// initialization
 	screen.Reset();
 
-	auto ret = disk.Init(screen, *stage2header,
-			     (const FatSuper *)0x7C00, heap);
-	if (!ret)
+	if (!mmap.Load()) {
+		screen << "Error loading BIOS memory map!" << "\r\n";
 		goto fail;
+	}
+
+	if (!disk.Init(screen, *stage2header,
+		       (const FatSuper *)0x7C00, heap)) {
+		goto fail;
+	}
 
 	// find the boot loader config file
 	finfo.cluster = disk.RootDirIndex();

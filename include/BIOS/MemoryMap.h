@@ -1,0 +1,77 @@
+/* SPDX-License-Identifier: ISC */
+/*
+ * MemoryMap.h
+ *
+ * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
+ */
+#ifndef BIOS_MEMORY_MAP_H
+#define BIOS_MEMORY_MAP_H
+
+#include "UnalignedInt.h"
+
+#include <cstdint>
+
+extern "C" {
+	int IntCallE820(uint32_t *ebxInOut, uint8_t dst[20]);
+};
+
+class MemoryMapEntry {
+public:
+	int Load(uint32_t &ebxInOut) {
+		return IntCallE820(&ebxInOut, (uint8_t *)this);
+	}
+
+	auto BaseAddress() const {
+		return _base.Read();
+	}
+
+	auto Size() const {
+		return _size.Read();
+	}
+
+	auto Type() const {
+		return _type.Read();
+	}
+private:
+	UnalignedInt<uint64_t> _base;
+	UnalignedInt<uint64_t> _size;
+	UnalignedInt<uint32_t> _type;
+};
+
+static_assert(sizeof(MemoryMapEntry) == 20);
+
+template<size_t MAX_COUNT>
+class MemoryMap {
+public:
+	bool Load() {
+		uint32_t ebx = 0;
+
+		_count = 0;
+
+		do {
+			int ret = _ent[_count].Load(ebx);
+			if (ret < 0) {
+				_count = 0;
+				return false;
+			}
+			if (ret > 0)
+				break;
+			++_count;
+		} while (_count < MAX_COUNT && ebx != 0);
+
+		return true;
+	}
+
+	const auto *begin() const {
+		return _ent;
+	}
+
+	const auto *end() const {
+		return _ent + _count;
+	}
+private:
+	MemoryMapEntry _ent[MAX_COUNT];
+	size_t _count = 0;
+};
+
+#endif /* BIOS_MEMORY_MAP_H */
