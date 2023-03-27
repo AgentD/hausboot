@@ -12,7 +12,7 @@ HEADERS := ../include/BIOS/TextScreen.h ../include/stage2/Stage2Info.h \
 	../include/FixedLengthString.h ../include/ByteBlob.h \
 	../include/fs/FatDirent.h ../include/fs/FatDirentLong.h \
 	../include/stage2/FatDisk.h ../include/stage2/Heap.h \
-	../include/BIOS/MemoryMap.h
+	../include/BIOS/MemoryMap.h ../include/fs/FatName.h
 
 stage2.bin: stage2.ld abi.o stage2.o ../lib/BIOS/libBIOS.a
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

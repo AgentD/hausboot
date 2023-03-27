@@ -12,6 +12,8 @@
 #include "stage2/Heap.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
+#include "fs/FatName.h"
+#include "StringUtil.h"
 #include "multiboot.h"
 
 __attribute__ ((section(".header")))
@@ -32,57 +34,14 @@ struct FatFile {
 	FlagField<FatDirent::Flags, uint8_t> flags;
 };
 
-static bool StrEqual(const char *a, const char *b)
-{
-	for (;;) {
-		if (*a != *b)
-			return false;
-		if (*a == '\0')
-			break;
-		++a;
-		++b;
-	}
-	return true;
-}
-
-static bool IsSpace(int x)
-{
-	return x == ' ' || x == '\t';
-}
-
-static bool IsAlnum(int x)
-{
-	return (x >= 'A' && x <= 'Z') || (x >= 'a' && x <= 'z') ||
-		(x >= '0' && x <= '9');
-}
-
-static bool IsValidFatChar(int c)
-{
-	// Must be printable ASCII
-	if (c < 0x20 || c > 0x7E)
-		return false;
-
-	// Must be shouty case
-	if (c >= 0x61 && c <= 0x7A)
-		return false;
-
-	// Must not be :;<=>?
-	if (c >= 0x3A && c <= 0x3F)
-		return false;
-
-	// more special chars to exclude
-	if (c == '|' || c == '\\' || c == '/' || c == '"' || c == '*')
-		return false;
-
-	if (c == '+' || c == ',' || c == '[' || c == ']')
-		return false;
-
-	return true;
-}
-
 static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
 {
 	bool found = false;
+
+	if (!IsShortName(name)) {
+		screen << name << ": not a valid FAT short name!" << "\r\n";
+		return false;
+	}
 
 	auto cb = [name, &found, &out](FatDirent &ent) {
 		char buffer[13];
@@ -130,16 +89,10 @@ static bool FindByPath(const char *name, FatFile &out)
 		while (*name != '\0' && *name != '/' && *name != '\\') {
 			if (count >= (8 + 1 + 3))
 				return false;
-
-			if (!IsValidFatChar(*name))
-				return false;
-
 			name8_3[count++] = *(name++);
 		}
 
 		name8_3[count] = '\0';
-		if (count == 0)
-			return false;
 
 		if (!FindInDirectory(out, name8_3, out))
 			return false;

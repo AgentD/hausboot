@@ -8,6 +8,7 @@
 #include "fs/FatFsInfo.h"
 #include "fs/FatDirent.h"
 #include "fs/FatDirentLong.h"
+#include "fs/FatName.h"
 #include "host/File.h"
 #include "util.h"
 
@@ -672,7 +673,7 @@ static void CreateDirectory(std::string args)
 		return;
 
 	auto name = path.back();
-	if (!IsShortName(name)) {
+	if (!IsShortName(name.c_str())) {
 		std::cerr << name << ": is not a short name (sorry)" << std::endl;
 		return;
 	}
@@ -720,7 +721,7 @@ static void PackDirectory(std::string args)
 		return;
 
 	auto name = path.back();
-	if (!IsShortName(name)) {
+	if (!IsShortName(name.c_str())) {
 		std::cerr << name << ": is not a short name (sorry)" << std::endl;
 		return;
 	}

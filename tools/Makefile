@@ -6,7 +6,7 @@ HEADERS := ../include/fs/FatSuper.h ../include/FixedLengthString.h \
 	../include/part/CHSPacked.h \
 	../include/fs/FatFsInfo.h ../include/fs/FatDirent.h \
 	../include/fs/FatDirentLong.h ../include/BIOS/BiosDisk.h util.h \
-	../include/host/File.h
+	../include/host/File.h ../include/fs/FatName.h
 
 .PHONY: all
 all: installfat fatedit
