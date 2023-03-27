@@ -18,7 +18,17 @@ extern "C" {
 class MemoryMapEntry {
 public:
 	int Load(uint32_t &ebxInOut) {
-		return IntCallE820(&ebxInOut, (uint8_t *)this);
+		static MemoryMapEntry temp;
+
+		/*
+		  XXX: Linux memory.c says that some BIOSes assume we always
+		  use the same buffer, so we use a static scratch buffer for
+		  the call and copy the result afterwards.
+		*/
+		auto ret = IntCallE820(&ebxInOut, (uint8_t *)&temp);
+		*this = temp;
+
+		return ret;
 	}
 
 	auto BaseAddress() const {

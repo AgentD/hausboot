@@ -19,7 +19,7 @@ IntCallE820:
 	movl	$0x0000e820, %eax
 	movl	$20, %ecx
 	movl	$0x534d4150, %edx
-	movl	$_scratch, %edi
+	movl	12(%ebp), %edi
 	int	$0x15
 
 	/*
@@ -33,12 +33,6 @@ IntCallE820:
 	/* result write back */
 	movl	8(%ebp), %eax
 	movl	%ebx, (%eax)
-
-	movl	$_scratch, %esi
-	movl	12(%ebp), %edi
-	movl	$20, %ecx
-	rep
-	movsb
 
 	/* restore state, leave function */
 	popal
@@ -55,13 +49,4 @@ _fail:
 	popal
 	movl	$-1, %eax
 	jmp	_out
-	.align 8
-/*
-  XXX: Linux memory.c says that some BIOSes assume you always use the same
-  buffer, so we use this scratch buffer for the call and copy the result.
-*/
-_scratch:
-	.quad	0x0000000000000000
-	.quad	0x0000000000000000
-	.quad	0x0000000000000000
 	.size	IntCallE820, .-IntCallE820
