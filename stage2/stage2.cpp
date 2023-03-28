@@ -7,12 +7,12 @@
 #include "BIOS/TextScreen.h"
 #include "BIOS/MemoryMap.h"
 #include "BIOS/BIOSBlockDevice.h"
-#include "fs/FatDirentLong.h"
 #include "stage2/Stage2Info.h"
-#include "stage2/FatDisk.h"
+#include "fs/FatDirentLong.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
+#include "fs/FatFs.h"
 #include "IBlockDevice.h"
 #include "StringUtil.h"
 #include "multiboot.h"
@@ -26,7 +26,7 @@ static size_t multiBootMaxSearch = 8192;
 
 static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
-static FatDisk disk;
+static FatFs fs;
 static MemoryMap<32> mmap;
 static BIOSBlockDevice *part;
 
@@ -47,15 +47,15 @@ static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 	return s;
 }
 
-static TextScreen &operator<< (TextScreen &s, FatDisk::FindResult type)
+static TextScreen &operator<< (TextScreen &s, FatFs::FindResult type)
 {
 	const char *str = "no such file or directory";
 
 	switch (type) {
-	case FatDisk::FindResult::Ok: str = "ok"; break;
-	case FatDisk::FindResult::NameInvalid: str = "name invalid"; break;
-	case FatDisk::FindResult::IOError: str = "I/O error"; break;
-	case FatDisk::FindResult::NotDir:
+	case FatFs::FindResult::Ok: str = "ok"; break;
+	case FatFs::FindResult::NameInvalid: str = "name invalid"; break;
+	case FatFs::FindResult::IOError: str = "I/O error"; break;
+	case FatFs::FindResult::NotDir:
 		str = "component is not a directory";
 		break;
 	default:
@@ -87,10 +87,10 @@ static bool LoadFileToBuffer(FatFile &f, void *buffer)
 			((uint8_t *)buffer)[i] = ((uint8_t *)data)[i];
 
 		buffer = (uint8_t *)buffer + size;
-		return FatDisk::ScanVerdict::Ok;
+		return FatFs::ScanVerdict::Ok;
 	};
 
-	return disk.ForEachClusterInChain(f.cluster, f.size, cb);
+	return fs.ForEachClusterInChain(f.cluster, f.size, cb);
 }
 
 /*****************************************************************************/
@@ -142,8 +142,8 @@ static bool CmdMultiboot(const char *path)
 	screen << "multiboot: ";
 
 	// Try to locate the file
-	auto ret = disk.FindByPath(path, finfo);
-	if (ret != FatDisk::FindResult::Ok) {
+	auto ret = fs.FindByPath(path, finfo);
+	if (ret != FatFs::FindResult::Ok) {
 		screen << path << ": " << ret << "\r\n";
 		return false;
 	}
@@ -172,13 +172,13 @@ static bool CmdMultiboot(const char *path)
 			if (tryHdr->IsValid()) {
 				hdr = *tryHdr;
 				found = true;
-				return FatDisk::ScanVerdict::Stop;
+				return FatFs::ScanVerdict::Stop;
 			}
 		}
-		return FatDisk::ScanVerdict::Ok;
+		return FatFs::ScanVerdict::Ok;
 	};
 
-	if (!disk.ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
+	if (!fs.ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
 		return false;
 
 	if (hdr.Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
@@ -285,7 +285,7 @@ void free(void *ptr)
 void main(void *heapPtr)
 {
 	BIOSBlockDevice dosMBRPart;
-	FatDisk::FindResult ret;
+	FatFs::FindResult ret;
 	char *fileBuffer;
 	FatFile finfo;
 
@@ -307,14 +307,14 @@ void main(void *heapPtr)
 
 	part = &dosMBRPart;
 
-	if (!disk.Init(part, (const FatSuper *)0x7C00)) {
-		screen << "Error initializing FAT disk wrapper!" << "\r\n";
+	if (!fs.Init(part, (const FatSuper *)0x7C00)) {
+		screen << "Error initializing FAT FS wrapper!" << "\r\n";
 		goto fail;
 	}
 
 	// find the boot loader config file
-	ret = disk.FindByPath(bootConfigName, finfo);
-	if (ret != FatDisk::FindResult::Ok) {
+	ret = fs.FindByPath(bootConfigName, finfo);
+	if (ret != FatFs::FindResult::Ok) {
 		screen << bootConfigName << ": " << ret << "\r\n";
 		goto fail;
 	}

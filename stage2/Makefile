@@ -11,7 +11,7 @@ HEADERS := ../include/BIOS/TextScreen.h ../include/stage2/Stage2Info.h \
 	../include/BIOS/BiosDisk.h ../include/fs/FatSuper.h \
 	../include/FixedLengthString.h ../include/ByteBlob.h \
 	../include/fs/FatDirent.h ../include/fs/FatDirentLong.h \
-	../include/stage2/FatDisk.h ../include/Memory.h \
+	../include/fs/FatFs.h ../include/Memory.h \
 	../include/BIOS/MemoryMap.h ../include/fs/FatName.h \
 	../include/StringUtil.h ../include/IBlockDevice.h \
 	../include/BIOS/BIOSBlockDevice.h

@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: ISC */
 /*
- * FatDisk.h
+ * FatFs.h
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#ifndef FAT_DISK_H
-#define FAT_DISK_H
+#ifndef FAT_FS_H
+#define FAT_FS_H
 
 #include "IBlockDevice.h"
 #include "fs/FatSuper.h"
@@ -20,7 +20,7 @@ struct FatFile {
 	FlagField<FatDirent::Flags, uint8_t> flags;
 };
 
-class FatDisk {
+class FatFs {
 public:
 	bool Init(IBlockDevice *blk, const FatSuper *fsSuper) {
 		_blk = blk;
@@ -32,6 +32,13 @@ public:
 		fatWindow = (uint8_t *)malloc(blk->SectorSize());
 		dataWindow = (uint8_t *)malloc(BytesPerCluster());
 		return true;
+	}
+
+	void Cleanup() {
+		free(fatWindow);
+		free(dataWindow);
+		fatWindow = nullptr;
+		dataWindow = nullptr;
 	}
 
 	size_t BytesPerCluster() const {
@@ -215,4 +222,4 @@ private:
 	uint32_t currentDataCluster;
 };
 
-#endif /* FAT_DISK_H */
+#endif /* FAT_FS_H */
