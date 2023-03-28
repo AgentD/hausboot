@@ -28,6 +28,8 @@ static TextScreen screen;
 static FatDisk disk;
 static MemoryMap<32> mmap;
 
+static BlockDevice part;
+
 static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 {
 	const char *str = "unknown";
@@ -102,7 +104,7 @@ static bool CmdEcho(const char *line)
 static bool CmdInfo(const char *what)
 {
 	if (StrEqual(what, "disk")) {
-		auto geom = disk.DriveGeometry();
+		auto geom = part.DriveGeometry();
 		auto lba = stage2header->BootMBREntry().StartAddressLBA();
 		auto chs = geom.LBA2CHS(lba);
 
@@ -276,7 +278,12 @@ void main(void *heapPtr)
 		goto fail;
 	}
 
-	if (!disk.Init(*stage2header, (const FatSuper *)0x7C00, heap)) {
+	if (!part.Init(*stage2header)) {
+		screen << "Error initializing FAT partition wrapper!" << "\r\n";
+		goto fail;
+	}
+
+	if (!disk.Init(&part, (const FatSuper *)0x7C00, heap)) {
 		screen << "Error initializing FAT disk wrapper!" << "\r\n";
 		goto fail;
 	}

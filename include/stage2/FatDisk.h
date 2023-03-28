@@ -21,15 +21,38 @@ struct FatFile {
 	FlagField<FatDirent::Flags, uint8_t> flags;
 };
 
+class BlockDevice {
+public:
+	bool Init(const Stage2Info &hdr) {
+		_disk = hdr.BiosBootDrive();
+		_partStart = hdr.BootMBREntry().StartAddressLBA();
+
+		if (!_disk.ReadDriveParameters(_geometry))
+			return false;
+
+		return true;
+	}
+
+	bool LoadSector(uint32_t index, void *buffer) {
+		auto chs = _geometry.LBA2CHS(_partStart + index);
+
+		return _disk.LoadSectors(chs, buffer, 1);
+	}
+
+	const auto &DriveGeometry() const {
+		return _geometry;
+	}
+private:
+	BiosDisk::DriveGeometry _geometry;
+	uint32_t _partStart;
+	BiosDisk _disk{0};
+};
+
 class FatDisk {
 public:
-	bool Init(const Stage2Info &hdr, const FatSuper *fsSuper, Heap &heap) {
-		disk = hdr.BiosBootDrive();
-		partStart = hdr.BootMBREntry().StartAddressLBA();
+	bool Init(BlockDevice *blk, const FatSuper *fsSuper, Heap &heap) {
+		_blk = blk;
 		super = fsSuper;
-
-		if (!disk.ReadDriveParameters(driveGeometry))
-			return false;
 
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
@@ -166,10 +189,6 @@ public:
 
 		return FindResult::Ok;
 	}
-
-	const auto &DriveGeometry() const {
-		return driveGeometry;
-	}
 private:
 	bool LoadDataCluster(uint32_t index) {
 		if (index < 2)
@@ -178,12 +197,13 @@ private:
 		if (index == currentDataCluster)
 			return true;
 
-		auto sector = partStart + super->ClusterIndex2Sector(index);
-		auto chs = driveGeometry.LBA2CHS(sector);
+		auto lba = super->ClusterIndex2Sector(index);
 
-		if (!disk.LoadSectors(chs, dataWindow,
-				      super->SectorsPerCluster())) {
-			return false;
+		for (uint32_t i = 0; i < super->SectorsPerCluster(); ++i) {
+			auto *ptr = dataWindow + i * super->BytesPerSector();
+
+			if (!_blk->LoadSector(lba + i, ptr))
+				return false;
 		}
 
 		currentDataCluster = index;
@@ -194,16 +214,14 @@ private:
 		if (index >= super->SectorsPerFat())
 			return false;
 
-		if (index == currentFatSector)
-			return true;
+		if (index != currentFatSector) {
+			auto lba = super->ReservedSectors() + index;
 
-		auto lba = partStart + super->ReservedSectors() + index;
-		auto chs = driveGeometry.LBA2CHS(lba);
+			if (!_blk->LoadSector(lba, fatWindow))
+				return false;
 
-		if (!disk.LoadSectors(chs, fatWindow, 1))
-			return false;
-
-		currentFatSector = index;
+			currentFatSector = index;
+		}
 		return true;
 	}
 
@@ -218,14 +236,12 @@ private:
 		return true;
 	}
 
+	BlockDevice *_blk;
 	uint8_t *fatWindow;
 	uint8_t *dataWindow;
 	const FatSuper *super;
 	uint32_t currentFatSector;
 	uint32_t currentDataCluster;
-	BiosDisk::DriveGeometry driveGeometry;
-	BiosDisk disk{0};
-	uint32_t partStart;
 };
 
 #endif /* FAT_DISK_H */
