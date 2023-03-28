@@ -9,38 +9,27 @@
 
 #include "stage2/Stage2Info.h"
 #include "stage2/Heap.h"
-#include "BIOS/TextScreen.h"
 #include "BIOS/BiosDisk.h"
 #include "fs/FatSuper.h"
+#include "fs/FatName.h"
+#include "StringUtil.h"
+#include "FlagField.h"
 
-static TextScreen &operator<< (TextScreen &s, CHSPacked chs)
-{
-	s << chs.Cylinder() << "/" << chs.Head() << "/" << chs.Sector();
-	return s;
-}
-
-static TextScreen &operator<< (TextScreen &s,
-			       const BiosDisk::DriveGeometry &geom)
-{
-	s << geom.cylinders << "/" << geom.headsPerCylinder << "/"
-	  << geom.sectorsPerTrack;
-	return s;
-}
+struct FatFile {
+	uint32_t cluster;
+	uint32_t size;
+	FlagField<FatDirent::Flags, uint8_t> flags;
+};
 
 class FatDisk {
 public:
-	bool Init(TextScreen &ts, const Stage2Info &hdr,
-		  const FatSuper *fsSuper, Heap &heap) {
+	bool Init(const Stage2Info &hdr, const FatSuper *fsSuper, Heap &heap) {
 		disk = hdr.BiosBootDrive();
-		screen = &ts;
 		partStart = hdr.BootMBREntry().StartAddressLBA();
 		super = fsSuper;
 
-		if (!disk.ReadDriveParameters(driveGeometry)) {
-			(*screen) << "Error querying disk geometry!"
-				  << "\r\n";
+		if (!disk.ReadDriveParameters(driveGeometry))
 			return false;
-		}
 
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
@@ -55,8 +44,13 @@ public:
 		return super->SectorsPerCluster() * super->BytesPerSector();
 	}
 
-	auto RootDirIndex() const {
-		return super->RootDirIndex();
+	auto RootDir() const {
+		FatFile out;
+		out.cluster = super->RootDirIndex();
+		out.size = 0;
+		out.flags.Clear();
+		out.flags.Set(FatDirent::Flags::Directory);
+		return out;
 	}
 
 	enum class ScanVerdict {
@@ -93,29 +87,84 @@ public:
 		return true;
 	}
 
-	template<typename FUNCTOR>
-	bool ForEachDirectoryEntry(uint32_t index, FUNCTOR cb) {
-		auto wrap = [&cb](void *data, uint32_t size) {
-			auto *entS = (FatDirent *)data;
-			auto max = size / sizeof(*entS);
+	enum class FindResult {
+		Ok = 0,
+		NameInvalid = -1,
+		IOError = -2,
+		NoEntry = -3,
+		NotDir = -4,
+	};
+
+	FindResult FindInDirectory(const FatFile &in, const char *name, FatFile &out) {
+		if (!IsShortName(name))
+			return FindResult::NameInvalid;
+
+		if (!in.flags.IsSet(FatDirent::Flags::Directory))
+			return FindResult::NotDir;
+
+		auto index = in.cluster;
+
+		while (index < 0x0FFFFFF0) {
+			uint32_t next;
+
+			if (!LoadDataCluster(index) || !ReadFatIndex(index, next))
+				return FindResult::IOError;
+
+			index = next;
+
+			auto *entS = (FatDirent *)dataWindow;
+			auto max = BytesPerCluster() / sizeof(*entS);
 
 			for (decltype(max) i = 0; i < max; ++i) {
 				if (entS[i].IsLastInList())
-					return ScanVerdict::Stop;
+					return FindResult::NoEntry;
 				if (entS[i].EntryFlags().IsSet(FatDirent::Flags::LongFileName))
 					continue;
 				if (entS[i].IsDummiedOut())
 					continue;
 
-				ScanVerdict ret = cb(entS[i]);
-				if (ret != ScanVerdict::Ok)
-					return ret;
+				char buffer[8 + 1 + 3 + 1];
+				entS[i].NameToString(buffer);
+
+				if (StrEqual(buffer, name)) {
+					out.cluster = entS[i].ClusterIndex();
+					out.size = entS[i].Size();
+					out.flags = entS[i].EntryFlags();
+					return FindResult::Ok;
+				}
+			}
+		}
+
+		return FindResult::NoEntry;
+	}
+
+	FindResult FindByPath(const char *name, FatFile &out) {
+		out = RootDir();
+
+		while (*name != '\0') {
+			if (*name == '/' || *name == '\\') {
+				while (*name == '/' || *name == '\\')
+					++name;
+				continue;
 			}
 
-			return FatDisk::ScanVerdict::Ok;
-		};
+			char name8_3[8 + 1 + 3 + 1];
+			int count = 0;
 
-		return ForEachClusterInChain(index, 0xFFFFFFFF, wrap);
+			while (*name != '\0' && *name != '/' && *name != '\\') {
+				if (count >= (8 + 1 + 3))
+					return FindResult::NameInvalid;
+				name8_3[count++] = *(name++);
+			}
+
+			name8_3[count] = '\0';
+
+			auto ret = FindInDirectory(out, name8_3, out);
+			if (ret != FindResult::Ok)
+				return ret;
+		}
+
+		return FindResult::Ok;
 	}
 
 	const auto &DriveGeometry() const {
@@ -123,11 +172,8 @@ public:
 	}
 private:
 	bool LoadDataCluster(uint32_t index) {
-		if (index < 2) {
-			*screen << "[BUG] tried to access data cluster < 2"
-			       << "\r\n";
+		if (index < 2)
 			return false;
-		}
 
 		if (index == currentDataCluster)
 			return true;
@@ -137,9 +183,6 @@ private:
 
 		if (!disk.LoadSectors(chs, dataWindow,
 				      super->SectorsPerCluster())) {
-			*screen << "Error loading cluster " << index
-			       << " from sector " << sector
-			       << " (CHS: " << chs << ")" << "\r\n";
 			return false;
 		}
 
@@ -148,12 +191,8 @@ private:
 	}
 
 	bool LoadFatSector(uint32_t index) {
-		if (index >= super->SectorsPerFat()) {
-			*screen << "[BUG] tried to access out-of-bounds "
-				"FAT sector: " << index << " >= "
-			       << super->SectorsPerFat() << "\r\n";
+		if (index >= super->SectorsPerFat())
 			return false;
-		}
 
 		if (index == currentFatSector)
 			return true;
@@ -161,12 +200,8 @@ private:
 		auto lba = partStart + super->ReservedSectors() + index;
 		auto chs = driveGeometry.LBA2CHS(lba);
 
-		if (!disk.LoadSectors(chs, fatWindow, 1)) {
-			*screen << "Error loading disk sector " << lba
-			       << " while accessing FAT index " << index
-			       << "(CHS: " << chs << ")" << "\r\n";
+		if (!disk.LoadSectors(chs, fatWindow, 1))
 			return false;
-		}
 
 		currentFatSector = index;
 		return true;
@@ -185,7 +220,6 @@ private:
 
 	uint8_t *fatWindow;
 	uint8_t *dataWindow;
-	TextScreen *screen;
 	const FatSuper *super;
 	uint32_t currentFatSector;
 	uint32_t currentDataCluster;

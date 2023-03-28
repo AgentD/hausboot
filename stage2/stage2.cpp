@@ -28,12 +28,6 @@ static TextScreen screen;
 static FatDisk disk;
 static MemoryMap<32> mmap;
 
-struct FatFile {
-	uint32_t cluster;
-	uint32_t size;
-	FlagField<FatDirent::Flags, uint8_t> flags;
-};
-
 static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 {
 	const char *str = "unknown";
@@ -51,71 +45,37 @@ static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 	return s;
 }
 
-static bool FindInDirectory(const FatFile &in, const char *name, FatFile &out)
+static TextScreen &operator<< (TextScreen &s, FatDisk::FindResult type)
 {
-	bool found = false;
+	const char *str = "no such file or directory";
 
-	if (!IsShortName(name)) {
-		screen << name << ": not a valid FAT short name!" << "\r\n";
-		return false;
+	switch (type) {
+	case FatDisk::FindResult::Ok: str = "ok"; break;
+	case FatDisk::FindResult::NameInvalid: str = "name invalid"; break;
+	case FatDisk::FindResult::IOError: str = "I/O error"; break;
+	case FatDisk::FindResult::NotDir:
+		str = "component is not a directory";
+		break;
+	default:
+		break;
 	}
 
-	auto cb = [name, &found, &out](FatDirent &ent) {
-		char buffer[13];
-		ent.NameToString(buffer);
-
-		if (!StrEqual(buffer, name))
-			return FatDisk::ScanVerdict::Ok;
-
-		out.cluster = ent.ClusterIndex();
-		out.size = ent.Size();
-		out.flags = ent.EntryFlags();
-		found = true;
-		return FatDisk::ScanVerdict::Stop;
-	};
-
-	if (!disk.ForEachDirectoryEntry(in.cluster, cb))
-		return false;
-
-	if (!found) {
-		screen << name << ": no such file or directory"
-		       << "\r\n";
-		return false;
-	}
-
-	return true;
+	s << str;
+	return s;
 }
 
-static bool FindByPath(const char *name, FatFile &out)
+static TextScreen &operator<< (TextScreen &s, CHSPacked chs)
 {
-	out.cluster = disk.RootDirIndex();
-	out.size = 0;
-	out.flags.Clear();
-	out.flags.Set(FatDirent::Flags::Directory);
+	s << chs.Cylinder() << "/" << chs.Head() << "/" << chs.Sector();
+	return s;
+}
 
-	while (*name != '\0') {
-		if (*name == '/' || *name == '\\') {
-			while (*name == '/' || *name == '\\')
-				++name;
-			continue;
-		}
-
-		char name8_3[8 + 1 + 3 + 1];
-		int count = 0;
-
-		while (*name != '\0' && *name != '/' && *name != '\\') {
-			if (count >= (8 + 1 + 3))
-				return false;
-			name8_3[count++] = *(name++);
-		}
-
-		name8_3[count] = '\0';
-
-		if (!FindInDirectory(out, name8_3, out))
-			return false;
-	}
-
-	return true;
+static TextScreen &operator<< (TextScreen &s,
+			       const BiosDisk::DriveGeometry &geom)
+{
+	s << geom.cylinders << "/" << geom.headsPerCylinder << "/"
+	  << geom.sectorsPerTrack;
+	return s;
 }
 
 static bool LoadFileToBuffer(FatFile &f, void *buffer)
@@ -180,8 +140,9 @@ static bool CmdMultiboot(const char *path)
 	screen << "multiboot: ";
 
 	// Try to locate the file
-	if (!FindByPath(path, finfo)) {
-		screen << "cannot find `" << path << "`" << "\r\n";
+	auto ret = disk.FindByPath(path, finfo);
+	if (ret != FatDisk::FindResult::Ok) {
+		screen << path << ": " << ret << "\r\n";
 		return false;
 	}
 
@@ -302,6 +263,7 @@ static void RunScript(char *ptr)
 
 void main(void *heapPtr)
 {
+	FatDisk::FindResult ret;
 	Heap heap(heapPtr);
 	char *fileBuffer;
 	FatFile finfo;
@@ -314,18 +276,17 @@ void main(void *heapPtr)
 		goto fail;
 	}
 
-	if (!disk.Init(screen, *stage2header,
-		       (const FatSuper *)0x7C00, heap)) {
+	if (!disk.Init(*stage2header, (const FatSuper *)0x7C00, heap)) {
+		screen << "Error initializing FAT disk wrapper!" << "\r\n";
 		goto fail;
 	}
 
 	// find the boot loader config file
-	finfo.cluster = disk.RootDirIndex();
-	finfo.size = 0;
-	finfo.flags.Set(FatDirent::Flags::Directory);
-
-	if (!FindByPath(bootConfigName, finfo))
+	ret = disk.FindByPath(bootConfigName, finfo);
+	if (ret != FatDisk::FindResult::Ok) {
+		screen << bootConfigName << ": " << ret << "\r\n";
 		goto fail;
+	}
 
 	if (finfo.size > bootConfigMaxSize) {
 		screen << bootConfigName << ": too big (max size: "
