@@ -6,6 +6,7 @@
  */
 #include "BIOS/TextScreen.h"
 #include "BIOS/MemoryMap.h"
+#include "BIOS/BIOSBlockDevice.h"
 #include "fs/FatDirentLong.h"
 #include "stage2/Stage2Info.h"
 #include "stage2/FatDisk.h"
@@ -13,6 +14,7 @@
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
+#include "IBlockDevice.h"
 #include "StringUtil.h"
 #include "multiboot.h"
 
@@ -27,8 +29,7 @@ static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
 static FatDisk disk;
 static MemoryMap<32> mmap;
-
-static BlockDevice part;
+static BIOSBlockDevice *part;
 
 static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 {
@@ -104,7 +105,7 @@ static bool CmdEcho(const char *line)
 static bool CmdInfo(const char *what)
 {
 	if (StrEqual(what, "disk")) {
-		auto geom = part.DriveGeometry();
+		auto geom = part->DriveGeometry();
 		auto lba = stage2header->BootMBREntry().StartAddressLBA();
 		auto chs = geom.LBA2CHS(lba);
 
@@ -265,6 +266,7 @@ static void RunScript(char *ptr)
 
 void main(void *heapPtr)
 {
+	BIOSBlockDevice dosMBRPart;
 	FatDisk::FindResult ret;
 	Heap heap(heapPtr);
 	char *fileBuffer;
@@ -278,12 +280,15 @@ void main(void *heapPtr)
 		goto fail;
 	}
 
-	if (!part.Init(*stage2header)) {
+	if (!dosMBRPart.Init(stage2header->BiosBootDrive(),
+			     stage2header->BootMBREntry().StartAddressLBA())) {
 		screen << "Error initializing FAT partition wrapper!" << "\r\n";
 		goto fail;
 	}
 
-	if (!disk.Init(&part, (const FatSuper *)0x7C00, heap)) {
+	part = &dosMBRPart;
+
+	if (!disk.Init(part, (const FatSuper *)0x7C00, heap)) {
 		screen << "Error initializing FAT disk wrapper!" << "\r\n";
 		goto fail;
 	}

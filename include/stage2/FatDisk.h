@@ -7,9 +7,8 @@
 #ifndef FAT_DISK_H
 #define FAT_DISK_H
 
-#include "stage2/Stage2Info.h"
+#include "IBlockDevice.h"
 #include "stage2/Heap.h"
-#include "BIOS/BiosDisk.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "StringUtil.h"
@@ -21,50 +20,22 @@ struct FatFile {
 	FlagField<FatDirent::Flags, uint8_t> flags;
 };
 
-class BlockDevice {
-public:
-	bool Init(const Stage2Info &hdr) {
-		_disk = hdr.BiosBootDrive();
-		_partStart = hdr.BootMBREntry().StartAddressLBA();
-
-		if (!_disk.ReadDriveParameters(_geometry))
-			return false;
-
-		return true;
-	}
-
-	bool LoadSector(uint32_t index, void *buffer) {
-		auto chs = _geometry.LBA2CHS(_partStart + index);
-
-		return _disk.LoadSectors(chs, buffer, 1);
-	}
-
-	const auto &DriveGeometry() const {
-		return _geometry;
-	}
-private:
-	BiosDisk::DriveGeometry _geometry;
-	uint32_t _partStart;
-	BiosDisk _disk{0};
-};
-
 class FatDisk {
 public:
-	bool Init(BlockDevice *blk, const FatSuper *fsSuper, Heap &heap) {
+	bool Init(IBlockDevice *blk, const FatSuper *fsSuper, Heap &heap) {
 		_blk = blk;
 		super = fsSuper;
 
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
 
-		fatWindow = (uint8_t *)
-			heap.AllocateRaw(super->BytesPerSector());
+		fatWindow = (uint8_t *)heap.AllocateRaw(blk->SectorSize());
 		dataWindow = (uint8_t *)heap.AllocateRaw(BytesPerCluster());
 		return true;
 	}
 
 	size_t BytesPerCluster() const {
-		return super->SectorsPerCluster() * super->BytesPerSector();
+		return super->SectorsPerCluster() * _blk->SectorSize();
 	}
 
 	auto RootDir() const {
@@ -200,7 +171,7 @@ private:
 		auto lba = super->ClusterIndex2Sector(index);
 
 		for (uint32_t i = 0; i < super->SectorsPerCluster(); ++i) {
-			auto *ptr = dataWindow + i * super->BytesPerSector();
+			auto *ptr = dataWindow + i * _blk->SectorSize();
 
 			if (!_blk->LoadSector(lba + i, ptr))
 				return false;
@@ -226,8 +197,8 @@ private:
 	}
 
 	bool ReadFatIndex(uint32_t index, uint32_t &out) {
-		auto sector = (index * 4) / super->BytesPerSector();
-		auto offset = (index * 4) % super->BytesPerSector();
+		auto sector = (index * 4) / _blk->SectorSize();
+		auto offset = (index * 4) % _blk->SectorSize();
 
 		if (!LoadFatSector(sector))
 			return false;
@@ -236,7 +207,7 @@ private:
 		return true;
 	}
 
-	BlockDevice *_blk;
+	IBlockDevice *_blk;
 	uint8_t *fatWindow;
 	uint8_t *dataWindow;
 	const FatSuper *super;
