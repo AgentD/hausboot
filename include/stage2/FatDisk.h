@@ -8,11 +8,11 @@
 #define FAT_DISK_H
 
 #include "IBlockDevice.h"
-#include "stage2/Heap.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "StringUtil.h"
 #include "FlagField.h"
+#include "Memory.h"
 
 struct FatFile {
 	uint32_t cluster;
@@ -22,15 +22,15 @@ struct FatFile {
 
 class FatDisk {
 public:
-	bool Init(IBlockDevice *blk, const FatSuper *fsSuper, Heap &heap) {
+	bool Init(IBlockDevice *blk, const FatSuper *fsSuper) {
 		_blk = blk;
 		super = fsSuper;
 
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
 
-		fatWindow = (uint8_t *)heap.AllocateRaw(blk->SectorSize());
-		dataWindow = (uint8_t *)heap.AllocateRaw(BytesPerCluster());
+		fatWindow = (uint8_t *)malloc(blk->SectorSize());
+		dataWindow = (uint8_t *)malloc(BytesPerCluster());
 		return true;
 	}
 

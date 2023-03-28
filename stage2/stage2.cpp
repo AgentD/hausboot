@@ -10,7 +10,6 @@
 #include "fs/FatDirentLong.h"
 #include "stage2/Stage2Info.h"
 #include "stage2/FatDisk.h"
-#include "stage2/Heap.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
@@ -264,15 +263,35 @@ static void RunScript(char *ptr)
 
 /*****************************************************************************/
 
+static void *heapCeiling;
+
+void *malloc(size_t count)
+{
+	auto *out = heapCeiling;
+
+	if (count % 4)
+		count += 4 - (count % 4);
+
+	heapCeiling = (char *)heapCeiling + count;
+	return out;
+}
+
+void free(void *ptr)
+{
+	// TODO
+	(void)ptr;
+}
+
 void main(void *heapPtr)
 {
 	BIOSBlockDevice dosMBRPart;
 	FatDisk::FindResult ret;
-	Heap heap(heapPtr);
 	char *fileBuffer;
 	FatFile finfo;
 
 	// initialization
+	heapCeiling = heapPtr;
+
 	screen.Reset();
 
 	if (!mmap.Load()) {
@@ -288,7 +307,7 @@ void main(void *heapPtr)
 
 	part = &dosMBRPart;
 
-	if (!disk.Init(part, (const FatSuper *)0x7C00, heap)) {
+	if (!disk.Init(part, (const FatSuper *)0x7C00)) {
 		screen << "Error initializing FAT disk wrapper!" << "\r\n";
 		goto fail;
 	}
@@ -307,7 +326,7 @@ void main(void *heapPtr)
 	}
 
 	// load it into memory
-	fileBuffer = (char *)heap.AllocateRaw(finfo.size + 1);
+	fileBuffer = (char *)malloc(finfo.size + 1);
 
 	if (!LoadFileToBuffer(finfo, fileBuffer))
 		goto fail;
