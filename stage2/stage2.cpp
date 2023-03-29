@@ -283,6 +283,11 @@ void free(void *ptr)
 }
 
 extern bool EnableA20();
+extern void PmTest(void);
+
+extern "C" {
+	void ProtectedModeCall(...);
+}
 
 void main(void *heapPtr)
 {
@@ -342,6 +347,10 @@ void main(void *heapPtr)
 
 	// interpret it
 	RunScript(fileBuffer);
+
+	ProtectedModeCall(PmTest);
+
+	screen << "Returned from protected mode!" << "\r\n";
 fail:
 	for (;;) {
 		__asm__ volatile("hlt");

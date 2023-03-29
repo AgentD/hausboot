@@ -17,16 +17,22 @@ HEADERS := ../include/BIOS/TextScreen.h ../include/stage2/Stage2Info.h \
 	../include/BIOS/BIOSBlockDevice.h ../include/io.h \
 	../include/PS2Controller.h
 
-stage2.bin: stage2.ld abi.o a20.o stage2.o ../lib/BIOS/libBIOS.a
+stage2.bin: stage2.ld abi.o a20.o stage2.o pmcall.o pm.o ../lib/BIOS/libBIOS.a
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)
 
 abi.o: abi.S
+	$(AS) $(ASFLAGS) $^ -o $@
+
+pmcall.o: pmcall.S
 	$(AS) $(ASFLAGS) $^ -o $@
 
 stage2.o: stage2.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 a20.o: a20.cpp $(HEADERS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+pm.o: pm.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 .PHONY: clean
