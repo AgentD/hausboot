@@ -282,6 +282,8 @@ void free(void *ptr)
 	(void)ptr;
 }
 
+extern bool EnableA20();
+
 void main(void *heapPtr)
 {
 	BIOSBlockDevice dosMBRPart;
@@ -293,6 +295,11 @@ void main(void *heapPtr)
 	heapCeiling = heapPtr;
 
 	screen.Reset();
+
+	if (!EnableA20()) {
+		screen << "Error enabling A20 line!" << "\r\n";
+		goto fail;
+	}
 
 	if (!mmap.Load()) {
 		screen << "Error loading BIOS memory map!" << "\r\n";
