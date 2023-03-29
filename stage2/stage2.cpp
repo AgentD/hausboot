@@ -16,6 +16,7 @@
 #include "IBlockDevice.h"
 #include "StringUtil.h"
 #include "multiboot.h"
+#include "pm86.h"
 
 __attribute__ ((section(".header")))
 uint8_t headerBlob[sizeof(Stage2Info)];
@@ -282,12 +283,7 @@ void free(void *ptr)
 	(void)ptr;
 }
 
-extern bool EnableA20();
 extern void PmTest(void);
-
-extern "C" {
-	void ProtectedModeCall(...);
-}
 
 void main(void *heapPtr)
 {

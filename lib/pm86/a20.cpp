@@ -5,7 +5,6 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "PS2Controller.h"
-#include "Memory.h"
 #include "io.h"
 
 enum class SysCtrlPortA : uint8_t {

@@ -6,9 +6,9 @@
  */
 	.code16
 	.section ".text"
-	.globl	ProtectedModeCall
-	.type	ProtectedModeCall, @function
-ProtectedModeCall:
+	.globl	ProtectedModeCallRAW
+	.type	ProtectedModeCallRAW, @function
+ProtectedModeCallRAW:
 	/* save away the 16 bit context */
 	popl	%eax
 	movl	%eax, (_scratch)
@@ -92,4 +92,4 @@ gdt_desc:
 _scratch:
 	.quad	0x0000000000000000
 	.quad	0x0000000000000000
-	.size	ProtectedModeCall, .-ProtectedModeCall
+	.size	ProtectedModeCallRAW, .-ProtectedModeCallRAW
