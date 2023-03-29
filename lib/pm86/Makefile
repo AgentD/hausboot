@@ -4,7 +4,7 @@ CXXFLAGS := -I../../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
 	-momit-leaf-frame-pointer -fno-threadsafe-statics
 
-HEADERS := ../../include/PS2Controller.h ../../include/io.h \
+HEADERS := ../../include/device/PS2Controller.h ../../include/device/io.h \
 	../../include/FlagField.h ../../include/pm86.h
 
 libpm86.a: pmcall.o a20.o

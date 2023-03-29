@@ -8,7 +8,7 @@
 #define PS2CONTROLLER_H
 
 #include "FlagField.h"
-#include "io.h"
+#include "device/io.h"
 
 class PS2Controller {
 public:

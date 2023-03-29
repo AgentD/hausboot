@@ -4,8 +4,8 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "PS2Controller.h"
-#include "io.h"
+#include "device/PS2Controller.h"
+#include "device/io.h"
 
 enum class SysCtrlPortA : uint8_t {
 	EnableA20 = 0x02,
