@@ -137,44 +137,27 @@ static bool CmdInfo(const char *what)
 	return false;
 }
 
-static bool CmdMultiboot(const char *path)
+static MultiBootHeader *MBFindHeader(const FatFile &finfo, uint32_t &offset)
 {
-	FatFile finfo;
-
-	screen << "multiboot: ";
-
-	// Try to locate the file
-	auto ret = fs->FindByPath(path, finfo);
-	if (ret != FatFs::FindResult::Ok) {
-		screen << path << ": " << ret << "\r\n";
-		return false;
-	}
-
-	screen << "found `" << path
-	       << "`: cluster " << finfo.cluster
-	       << ", size: " << finfo.size << "\r\n";
-
-	// Sift through the file to find the header
-	MultiBootHeader hdr;
-	uint32_t offset = 0;
-	bool found = false;
+	MultiBootHeader *hdr = nullptr;
+	offset = 0;
 
 	auto scanSize = finfo.size > multiBootMaxSearch ?
 		multiBootMaxSearch : finfo.size;
 
-	if (scanSize >= sizeof(hdr))
-		scanSize -= sizeof(hdr);
+	if (scanSize >= sizeof(*hdr))
+		scanSize -= sizeof(*hdr);
 
-	auto sarchCb = [&hdr, &found, &offset](void *data, uint32_t size) {
-		if (size >= sizeof(hdr))
-			size -= sizeof(hdr);
+	auto sarchCb = [&hdr, &offset](void *data, uint32_t size) {
+		if (size >= sizeof(*hdr))
+			size -= sizeof(*hdr);
 
 		for (uint32_t i = 0; i < (size / 4); ++i) {
 			const auto *tryHdr = (MultiBootHeader *)((uint32_t *)data + i);
 
 			if (tryHdr->IsValid()) {
-				hdr = *tryHdr;
-				found = true;
+				hdr = new MultiBootHeader;
+				*hdr = *tryHdr;
 				offset += 4 * i;
 				return FatFs::ScanVerdict::Stop;
 			}
@@ -185,42 +168,28 @@ static bool CmdMultiboot(const char *path)
 	};
 
 	if (!fs->ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
-		return false;
+		return nullptr;
 
-	// make sure we have a header and it makes sense
-	if (!found) {
-		screen << "Error: " << "No multiboot header found!" << "\r\n";
-		return false;
-	}
+	return hdr;
+}
 
-	if (hdr.Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
-		screen << "Error: "
-		       << "video mode info required (unsupported)!" << "\r\n";
-		return false;
-	}
-
-	if (!hdr.Flags().IsSet(MultiBootHeader::KernelFlags::HaveLayoutInfo)) {
-		screen << "Error: "
-		       << "No memory layout provided (unsupported)!" << "\r\n";
-		return false;
-	}
-
-	// Determine memory layout
+static bool MBLoadKernel(const FatFile &finfo, const MultiBootHeader &hdr,
+			 uint32_t fileOffset)
+{
 	uint32_t fileStart, memStart, count;
 
-	if (!hdr.ExtractMemLayout(offset, finfo.size, fileStart,
+	if (!hdr.ExtractMemLayout(fileOffset, finfo.size, fileStart,
 				  memStart, count)) {
 		screen << "Error: " << "Memory layout is broken!" << "\r\n";
 		return false;
 	}
 
 	// load it into memory
-	screen << "Loading " << count << " bytes from `" << path << "`@"
-	       << fileStart << " to #";
+	screen << "Loading " << count << " bytes to #";
 	screen.WriteHex(memStart);
 	screen << "\r\n";
 
-	offset = 0;
+	uint32_t offset = 0;
 
 	auto loadCb = [&offset, &fileStart,
 		       &memStart, &count](void *data, uint32_t size) {
@@ -251,15 +220,50 @@ static bool CmdMultiboot(const char *path)
 			FatFs::ScanVerdict::Stop;
 	};
 
-	if (!fs->ForEachClusterInChain(finfo.cluster, finfo.size, loadCb))
+	if (!fs->ForEachClusterInChain(finfo.cluster, finfo.size, loadCb)) {
+		screen << "failed" << "\r\n";
 		return false;
+	}
 
 	ProtectedModeCall(ClearMemory32, (void *)memStart, hdr.BSSSize());
-
 	screen << "done" << "\r\n";
+	return true;
+}
 
-	// "now hold on to your butts..."
-	ProtectedModeCall((void(*)(void))hdr.EntryPoint());
+static bool CmdMultiboot(const char *path)
+{
+	FatFile finfo;
+
+	auto ret = fs->FindByPath(path, finfo);
+	if (ret != FatFs::FindResult::Ok) {
+		screen << path << ": " << ret << "\r\n";
+		return false;
+	}
+
+	uint32_t offset;
+
+	auto *hdr = MBFindHeader(finfo, offset);
+	if (hdr == nullptr) {
+		screen << "Error: " << "No multiboot header found!" << "\r\n";
+		return false;
+	}
+
+	if (hdr->Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
+		screen << "Error: "
+		       << "video mode info required (unsupported)!" << "\r\n";
+		return false;
+	}
+
+	if (!hdr->Flags().IsSet(MultiBootHeader::KernelFlags::HaveLayoutInfo)) {
+		screen << "Error: "
+		       << "No memory layout provided (unsupported)!" << "\r\n";
+		return false;
+	}
+
+	if (!MBLoadKernel(finfo, *hdr, offset))
+		return false;
+
+	ProtectedModeCall((void(*)(void))hdr->EntryPoint());
 	return false;
 }
 
