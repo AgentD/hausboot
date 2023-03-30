@@ -32,7 +32,7 @@ mbr/mbr.bin:
 vbr/vbr.bin:
 	$(MAKE) -C vbr
 
-stage2/stage2.bin: lib/BIOS/libBIOS.a lib/pm86/libpm86.a
+stage2/stage2.bin: lib/BIOS/libBIOS.a lib/pm86/libpm86.a lib/cxxabi/libcxxabi.a
 	$(MAKE) -C stage2
 
 lib/BIOS/libBIOS.a:
@@ -40,6 +40,9 @@ lib/BIOS/libBIOS.a:
 
 lib/pm86/libpm86.a:
 	$(MAKE) -C lib/pm86
+
+lib/cxxabi/libcxxabi.a:
+	$(MAKE) -C lib/cxxabi
 
 .PHONY: clean
 clean:
@@ -50,6 +53,7 @@ clean:
 	$(MAKE) -C kernel clean
 	$(MAKE) -C lib/BIOS clean
 	$(MAKE) -C lib/pm86 clean
+	$(MAKE) -C lib/cxxabi clean
 	$(RM) *.img
 
 .PHONY: runqemu
