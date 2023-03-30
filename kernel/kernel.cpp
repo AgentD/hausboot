@@ -4,9 +4,13 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "multiboot.h"
+#include "kernel/MultiBootInfo.h"
 
 static const char *msg = "Hello 32 bit world!";
+
+extern "C" {
+	void multiboot_main(const MultiBootInfo *info);
+};
 
 void multiboot_main(const MultiBootInfo *info)
 {

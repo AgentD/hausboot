@@ -7,6 +7,7 @@
 #include "BIOS/TextScreen.h"
 #include "BIOS/MemoryMap.h"
 #include "BIOS/BIOSBlockDevice.h"
+#include "kernel/MultiBootHeader.h"
 #include "stage2/Stage2Info.h"
 #include "fs/FatDirentLong.h"
 #include "fs/FatDirent.h"
@@ -15,7 +16,6 @@
 #include "fs/FatFs.h"
 #include "IBlockDevice.h"
 #include "StringUtil.h"
-#include "multiboot.h"
 #include "pm86.h"
 
 __attribute__ ((section(".header")))

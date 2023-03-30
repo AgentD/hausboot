@@ -14,7 +14,8 @@ HEADERS := ../include/BIOS/TextScreen.h ../include/stage2/Stage2Info.h \
 	../include/fs/FatFs.h ../include/Memory.h \
 	../include/BIOS/MemoryMap.h ../include/fs/FatName.h \
 	../include/StringUtil.h ../include/IBlockDevice.h \
-	../include/BIOS/BIOSBlockDevice.h ../include/pm86.h
+	../include/BIOS/BIOSBlockDevice.h ../include/pm86.h \
+	../include/kernel/MultiBootHeader.h
 
 stage2.bin: stage2.ld abi.o heap.o stage2.o ../lib/BIOS/libBIOS.a \
 	../lib/pm86/libpm86.a ../lib/cxxabi/libcxxabi.a
