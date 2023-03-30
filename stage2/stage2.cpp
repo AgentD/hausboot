@@ -20,16 +20,17 @@
 
 __attribute__ ((section(".header")))
 uint8_t headerBlob[sizeof(Stage2Info)];
+static auto *stage2header = (Stage2Info *)headerBlob;
 
 static const char *bootConfigName = "BOOT.CFG";
-static size_t bootConfigMaxSize = 4096;
-static size_t multiBootMaxSearch = 8192;
+static constexpr size_t bootConfigMaxSize = 4096;
+static constexpr size_t multiBootMaxSearch = 8192;
+static constexpr size_t heapMaxSize = 8192;
 
-static auto *stage2header = (Stage2Info *)headerBlob;
 static TextScreen screen;
-static FatFs fs;
 static MemoryMap<32> mmap;
 static BIOSBlockDevice *part;
+static FatFs *fs;
 
 static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 {
@@ -91,7 +92,7 @@ static bool LoadFileToBuffer(FatFile &f, void *buffer)
 		return FatFs::ScanVerdict::Ok;
 	};
 
-	return fs.ForEachClusterInChain(f.cluster, f.size, cb);
+	return fs->ForEachClusterInChain(f.cluster, f.size, cb);
 }
 
 /*****************************************************************************/
@@ -143,7 +144,7 @@ static bool CmdMultiboot(const char *path)
 	screen << "multiboot: ";
 
 	// Try to locate the file
-	auto ret = fs.FindByPath(path, finfo);
+	auto ret = fs->FindByPath(path, finfo);
 	if (ret != FatFs::FindResult::Ok) {
 		screen << path << ": " << ret << "\r\n";
 		return false;
@@ -179,7 +180,7 @@ static bool CmdMultiboot(const char *path)
 		return FatFs::ScanVerdict::Ok;
 	};
 
-	if (!fs.ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
+	if (!fs->ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
 		return false;
 
 	if (hdr.Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
@@ -264,36 +265,16 @@ static void RunScript(char *ptr)
 
 /*****************************************************************************/
 
-static void *heapCeiling;
-
-void *malloc(size_t count)
-{
-	auto *out = heapCeiling;
-
-	if (count % 4)
-		count += 4 - (count % 4);
-
-	heapCeiling = (char *)heapCeiling + count;
-	return out;
-}
-
-void free(void *ptr)
-{
-	// TODO
-	(void)ptr;
-}
-
 extern void PmTest(void);
 
 void main(void *heapPtr)
 {
-	BIOSBlockDevice dosMBRPart;
 	FatFs::FindResult ret;
 	char *fileBuffer;
 	FatFile finfo;
 
 	// initialization
-	heapCeiling = heapPtr;
+	HeapInit(heapPtr, heapMaxSize);
 
 	screen.Reset();
 
@@ -307,21 +288,22 @@ void main(void *heapPtr)
 		goto fail;
 	}
 
-	if (!dosMBRPart.Init(stage2header->BiosBootDrive(),
-			     stage2header->BootMBREntry().StartAddressLBA())) {
+	part = new BIOSBlockDevice(stage2header->BiosBootDrive(),
+				   stage2header->BootMBREntry().StartAddressLBA());
+
+	if (part == nullptr || !part->IsInitialized()) {
 		screen << "Error initializing FAT partition wrapper!" << "\r\n";
 		goto fail;
 	}
 
-	part = &dosMBRPart;
-
-	if (!fs.Init(part, (const FatSuper *)0x7C00)) {
+	fs = new FatFs(part, *((FatSuper *)0x7C00));
+	if (fs == nullptr) {
 		screen << "Error initializing FAT FS wrapper!" << "\r\n";
 		goto fail;
 	}
 
 	// find the boot loader config file
-	ret = fs.FindByPath(bootConfigName, finfo);
+	ret = fs->FindByPath(bootConfigName, finfo);
 	if (ret != FatFs::FindResult::Ok) {
 		screen << bootConfigName << ": " << ret << "\r\n";
 		goto fail;

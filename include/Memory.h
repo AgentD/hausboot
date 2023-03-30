@@ -7,14 +7,20 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#ifdef __STDC_HOSTED__
-#include <cstdlib>
-#else
 #include <cstddef>
 
-extern void *malloc(size_t count);
-extern void free(void *ptr);
-#endif
+extern "C" {
+	void HeapInit(void *basePtr, size_t maxSize);
+	void *malloc(size_t count);
+	void free(void *ptr);
+}
+
+inline void *operator new(size_t size) { return malloc(size); }
+inline void *operator new[](size_t size) { return malloc(size); }
+inline void operator delete(void *p) { free(p); }
+inline void operator delete(void *p, size_t) { free(p); }
+inline void operator delete[](void *p) { free(p); }
+inline void operator delete[](void *p, size_t) { free(p); }
 
 #endif /* MEMORY_H */
 

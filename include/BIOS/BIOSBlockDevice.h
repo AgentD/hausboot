@@ -14,13 +14,17 @@
 
 class BIOSBlockDevice : public IBlockDevice {
 public:
-	bool Init(BiosDisk disk, uint32_t offset) {
-		if (!disk.ReadDriveParameters(_geometry))
-			return false;
+	BIOSBlockDevice() = delete;
+
+	BIOSBlockDevice(BiosDisk disk, uint32_t offset) {
+		if (!disk.ReadDriveParameters(_geometry)) {
+			_isInitialized = false;
+			return;
+		}
 
 		_disk = disk;
 		_partStart = offset;
-		return true;
+		_isInitialized = true;
 	}
 
 	virtual bool LoadSector(uint32_t index, void *buffer) override final {
@@ -36,7 +40,12 @@ public:
 	const auto &DriveGeometry() const {
 		return _geometry;
 	}
+
+	bool IsInitialized() const {
+		return _isInitialized;
+	}
 private:
+	bool _isInitialized;
 	BiosDisk::DriveGeometry _geometry;
 	uint32_t _partStart;
 	BiosDisk _disk{0};

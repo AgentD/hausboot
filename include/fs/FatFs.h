@@ -22,19 +22,18 @@ struct FatFile {
 
 class FatFs {
 public:
-	bool Init(IBlockDevice *blk, const FatSuper *fsSuper) {
-		_blk = blk;
-		super = fsSuper;
+	FatFs() = delete;
 
+	FatFs(IBlockDevice *blk, const FatSuper &fsSuper) :
+		_blk(blk), super(fsSuper) {
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
 
 		fatWindow = (uint8_t *)malloc(blk->SectorSize());
 		dataWindow = (uint8_t *)malloc(BytesPerCluster());
-		return true;
 	}
 
-	void Cleanup() {
+	~FatFs() {
 		free(fatWindow);
 		free(dataWindow);
 		fatWindow = nullptr;
@@ -42,12 +41,12 @@ public:
 	}
 
 	size_t BytesPerCluster() const {
-		return super->SectorsPerCluster() * _blk->SectorSize();
+		return super.SectorsPerCluster() * _blk->SectorSize();
 	}
 
 	auto RootDir() const {
 		FatFile out;
-		out.cluster = super->RootDirIndex();
+		out.cluster = super.RootDirIndex();
 		out.size = 0;
 		out.flags.Clear();
 		out.flags.Set(FatDirent::Flags::Directory);
@@ -175,9 +174,9 @@ private:
 		if (index == currentDataCluster)
 			return true;
 
-		auto lba = super->ClusterIndex2Sector(index);
+		auto lba = super.ClusterIndex2Sector(index);
 
-		for (uint32_t i = 0; i < super->SectorsPerCluster(); ++i) {
+		for (uint32_t i = 0; i < super.SectorsPerCluster(); ++i) {
 			auto *ptr = dataWindow + i * _blk->SectorSize();
 
 			if (!_blk->LoadSector(lba + i, ptr))
@@ -189,11 +188,11 @@ private:
 	}
 
 	bool LoadFatSector(uint32_t index) {
-		if (index >= super->SectorsPerFat())
+		if (index >= super.SectorsPerFat())
 			return false;
 
 		if (index != currentFatSector) {
-			auto lba = super->ReservedSectors() + index;
+			auto lba = super.ReservedSectors() + index;
 
 			if (!_blk->LoadSector(lba, fatWindow))
 				return false;
@@ -217,7 +216,7 @@ private:
 	IBlockDevice *_blk;
 	uint8_t *fatWindow;
 	uint8_t *dataWindow;
-	const FatSuper *super;
+	const FatSuper &super;
 	uint32_t currentFatSector;
 	uint32_t currentDataCluster;
 };
