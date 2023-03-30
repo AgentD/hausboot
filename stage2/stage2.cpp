@@ -156,6 +156,7 @@ static bool CmdMultiboot(const char *path)
 
 	// Sift through the file to find the header
 	MultiBootHeader hdr;
+	uint32_t offset = 0;
 	bool found = false;
 
 	auto scanSize = finfo.size > multiBootMaxSearch ?
@@ -164,7 +165,7 @@ static bool CmdMultiboot(const char *path)
 	if (scanSize >= sizeof(hdr))
 		scanSize -= sizeof(hdr);
 
-	auto sarchCb = [&hdr, &found](void *data, uint32_t size) {
+	auto sarchCb = [&hdr, &found, &offset](void *data, uint32_t size) {
 		if (size >= sizeof(hdr))
 			size -= sizeof(hdr);
 
@@ -174,14 +175,23 @@ static bool CmdMultiboot(const char *path)
 			if (tryHdr->IsValid()) {
 				hdr = *tryHdr;
 				found = true;
+				offset += 4 * i;
 				return FatFs::ScanVerdict::Stop;
 			}
 		}
+
+		offset += size;
 		return FatFs::ScanVerdict::Ok;
 	};
 
 	if (!fs->ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
 		return false;
+
+	// make sure we have a header and it makes sense
+	if (!found) {
+		screen << "Error: " << "No multiboot header found!" << "\r\n";
+		return false;
+	}
 
 	if (hdr.Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
 		screen << "Error: "
@@ -195,9 +205,21 @@ static bool CmdMultiboot(const char *path)
 		return false;
 	}
 
-	screen << "Valid multiboot header found!" << "\r\n";
+	// Determine memory layout
+	uint32_t fileStart, memStart, count;
+
+	if (!hdr.ExtractMemLayout(offset, finfo.size, fileStart,
+				  memStart, count)) {
+		screen << "Error: " << "Memory layout is broken!" << "\r\n";
+		return false;
+	}
 
 	// TODO: load the darn thing already!
+	screen << "Loading " << count << " bytes from `" << path << "`@"
+	       << fileStart << " to #";
+	screen.WriteHex(memStart);
+	screen << "\r\n";
+
 	return true;
 }
 
