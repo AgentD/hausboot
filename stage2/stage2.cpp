@@ -214,13 +214,53 @@ static bool CmdMultiboot(const char *path)
 		return false;
 	}
 
-	// TODO: load the darn thing already!
+	// load it into memory
 	screen << "Loading " << count << " bytes from `" << path << "`@"
 	       << fileStart << " to #";
 	screen.WriteHex(memStart);
 	screen << "\r\n";
 
-	return true;
+	offset = 0;
+
+	auto loadCb = [&offset, &fileStart,
+		       &memStart, &count](void *data, uint32_t size) {
+		if (offset < fileStart) {
+			auto diff = fileStart - offset;
+			if (size <= diff) {
+				offset += size;
+				return FatFs::ScanVerdict::Ok;
+			}
+
+			offset += diff;
+			data = (char *)data + diff;
+			size -= diff;
+		}
+
+		if (size > count)
+			size = count;
+
+		const auto *dst = (void *)memStart;
+
+		screen << ".";
+
+		ProtectedModeCall(CopyMemory32, dst, data, size);
+
+		memStart += size;
+		count -= size;
+		return count > 0 ? FatFs::ScanVerdict::Ok :
+			FatFs::ScanVerdict::Stop;
+	};
+
+	if (!fs->ForEachClusterInChain(finfo.cluster, finfo.size, loadCb))
+		return false;
+
+	ProtectedModeCall(ClearMemory32, (void *)memStart, hdr.BSSSize());
+
+	screen << "done" << "\r\n";
+
+	// "now hold on to your butts..."
+	ProtectedModeCall((void(*)(void))hdr.EntryPoint());
+	return false;
 }
 
 static const struct {
@@ -287,8 +327,6 @@ static void RunScript(char *ptr)
 
 /*****************************************************************************/
 
-extern void PmTest(void);
-
 void main(void *heapPtr)
 {
 	FatFs::FindResult ret;
@@ -347,10 +385,6 @@ void main(void *heapPtr)
 
 	// interpret it
 	RunScript(fileBuffer);
-
-	ProtectedModeCall(PmTest);
-
-	screen << "Returned from protected mode!" << "\r\n";
 fail:
 	for (;;) {
 		__asm__ volatile("hlt");

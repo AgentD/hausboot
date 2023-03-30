@@ -16,7 +16,7 @@ HEADERS := ../include/BIOS/TextScreen.h ../include/stage2/Stage2Info.h \
 	../include/StringUtil.h ../include/IBlockDevice.h \
 	../include/BIOS/BIOSBlockDevice.h ../include/pm86.h
 
-stage2.bin: stage2.ld abi.o heap.o stage2.o pm.o ../lib/BIOS/libBIOS.a \
+stage2.bin: stage2.ld abi.o heap.o stage2.o ../lib/BIOS/libBIOS.a \
 	../lib/pm86/libpm86.a ../lib/cxxabi/libcxxabi.a
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)
 
@@ -24,9 +24,6 @@ abi.o: abi.S
 	$(AS) $(ASFLAGS) $^ -o $@
 
 stage2.o: stage2.cpp $(HEADERS)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-pm.o: pm.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 heap.o: heap.cpp $(HEADERS)

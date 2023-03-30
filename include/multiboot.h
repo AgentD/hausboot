@@ -194,6 +194,15 @@ public:
 		// must fit in file
 		return count <= (filesize - fileStart);
 	}
+
+	void *EntryPoint() const {
+		return (void *)_entryAddr;
+	}
+
+	size_t BSSSize() const {
+		return _bssEndAddr > _loadEndAddr ?
+			(_bssEndAddr - _loadEndAddr) : 0;
+	}
 private:
 	uint32_t _magic;
 	FlagField<KernelFlags, uint32_t> _flags;
