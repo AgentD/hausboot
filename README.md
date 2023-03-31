@@ -2,6 +2,11 @@
 
 "I wrote a bootloader in C++, [I AM A CHAMPION!](https://www.youtube.com/watch?v=j4miM_sZU-k)"
 
+Here is a pre-compiled version: https://goliath32.com/hausboot/hausboot.tar.xz
+
+It includes a disk image, scripts to run it and the individual components
+as separate binaries.
+
 The abomination in this repository consists of:
 
 - An MBR boot sector that chain loads a sector form a bootable partition.
