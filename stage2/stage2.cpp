@@ -38,24 +38,6 @@ static bool haveKernel = false;
 static void *kernelEntry = nullptr;
 
 template<class T>
-static TextScreen<T> &operator<< (TextScreen<T> &s, MemoryMapEntry::MemType type)
-{
-	const char *str = "unknown";
-
-	switch (type) {
-	case MemoryMapEntry::MemType::Usable: str = "free"; break;
-	case MemoryMapEntry::MemType::Reserved: str = "reserved"; break;
-	case MemoryMapEntry::MemType::ACPI: str = "ACPI"; break;
-	case MemoryMapEntry::MemType::Preserve: str = "preserve"; break;
-	default:
-		break;
-	}
-
-	s << str;
-	return s;
-}
-
-template<class T>
 static TextScreen<T> &operator<< (TextScreen<T> &s, FatFs::FindResult type)
 {
 	const char *str = "no such file or directory";
@@ -208,6 +190,15 @@ static MultiBootInfo *MBGenInfo()
 
 	info->SetLoadName("hausboot");
 
+	size_t count = mmap.Count();
+	auto *mbMmap = new MultiBootMmap[count];
+
+	for (size_t i = 0; i < count; ++i) {
+		mbMmap[i] = mmap.At(i);
+		mbMmap[i].SetNext(mbMmap + i + 1);
+	}
+
+	info->SetMemoryMap(mbMmap, count);
 	return info;
 }
 
@@ -247,7 +238,7 @@ static bool CmdInfo(const char *what)
 			screen.WriteHex(it.BaseAddress());
 			screen << ", size: ";
 			screen.WriteHex(it.Size());
-			screen << ", type: " << it.Type() << "\r\n";
+			screen << ", type: " << it.TypeAsString() << "\r\n";
 		}
 
 		return true;

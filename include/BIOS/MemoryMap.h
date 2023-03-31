@@ -53,6 +53,17 @@ public:
 		return value < 1 || value > 5 ?
 			MemType::Broken : (MemType)value;
 	}
+
+	const char *TypeAsString() const {
+		switch (Type()) {
+		case MemType::Usable: return "free";
+		case MemType::Reserved: return "reserved";
+		case MemType::ACPI: return "ACPI";
+		case MemType::Preserve: return "preserve";
+		default:
+			return "unknown";
+		}
+	}
 private:
 	UnalignedInt<uint64_t> _base;
 	UnalignedInt<uint64_t> _size;
@@ -89,6 +100,14 @@ public:
 
 	const auto *end() const {
 		return _ent + _count;
+	}
+
+	const auto &At(size_t i) const {
+		return i < _count ? _ent[i] : _ent[_count - 1];
+	}
+
+	auto Count() const {
+		return _count;
 	}
 private:
 	MemoryMapEntry _ent[MAX_COUNT];

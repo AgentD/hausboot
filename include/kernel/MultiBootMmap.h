@@ -27,10 +27,23 @@ public:
 		return _wrapped.Size();
 	}
 
+	const auto *TypeAsString() const {
+		return _wrapped.TypeAsString();
+	}
+
 	const auto *Next() const {
 		auto next = (uint32_t)this + _size.Read() + sizeof(_size);
 
 		return (const MultiBootMmap *)next;
+	}
+
+	MultiBootMmap &operator= (const MemoryMapEntry &e820) {
+		_wrapped = e820;
+		return *this;
+	}
+
+	void SetNext(MultiBootMmap *next) {
+		_size = (char *)next - (char *)this - sizeof(_size);
 	}
 private:
 	UnalignedInt<uint32_t> _size;

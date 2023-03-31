@@ -42,6 +42,7 @@ static void PrintMemoryMap(TextScreen<VideoMemory>& s,
 		s.WriteHex(start);
 		s << " | ";
 		s.WriteHex(end);
+		s << " | " << mmap->TypeAsString();
 		s << "\r\n";
 	}
 }

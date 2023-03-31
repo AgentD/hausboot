@@ -64,6 +64,12 @@ public:
 
 		return (const MultiBootMmap *)end;
 	}
+
+	void SetMemoryMap(MultiBootMmap *array, size_t count) {
+		_mmap.base = array;
+		_mmap.length = count * sizeof(array[0]);
+		_flags.Set(InfoFlag::MemMap);
+	}
 private:
 	FlagField<InfoFlag, uint32_t> _flags{};
 
@@ -80,7 +86,7 @@ private:
 
 	struct {
 		uint32_t length = 0;
-		MultiBootMmap *base = nullptr;
+		const MultiBootMmap *base = nullptr;
 	} _mmap;
 
 	uint32_t _drivesLength = 0;
