@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "stage2/Stage2Info.h"
+#include "Stage2Header.h"
 #include "fs/FatFsInfo.h"
 #include "fs/FatSuper.h"
 #include "host/File.h"
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 		if (!ReadAll(stage2File, stage2, max))
 			return EXIT_FAILURE;
 
-		auto *hdr = new (stage2.data()) Stage2Info();
+		auto *hdr = new (stage2.data()) Stage2Header();
 		hdr->SetSectorCount(stage2.size());
 		hdr->UpdateChecksum();
 

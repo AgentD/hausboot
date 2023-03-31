@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: ISC */
 /*
- * Stage2Info.h
+ * Stage2Header.h
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#ifndef STAGE2_H
-#define STAGE2_H
+#ifndef STAGE2HEADER_H
+#define STAGE2HEADER_H
 
 #include <cstdint>
 #include <cstddef>
@@ -16,7 +16,7 @@
 constexpr uint32_t Stage2Magic = 0xD0D0CACA;
 constexpr uint16_t Stage2Location = 0x1000;
 
-class Stage2Info {
+class Stage2Header {
 public:
 	void SetSectorCount(uint32_t size) {
 		_sectorCount = size / 512;
@@ -79,6 +79,6 @@ private:
 	MBREntry _bootMbrEntry{};
 };
 
-static_assert(sizeof(Stage2Info) == 28);
+static_assert(sizeof(Stage2Header) == 28);
 
-#endif /* STAGE2_H */
+#endif /* STAGE2HEADER_H */

@@ -8,7 +8,7 @@
 #define BIOS_BLOCK_DEVICE_H
 
 #include "BIOS/BiosDisk.h"
-#include "IBlockDevice.h"
+#include "device/IBlockDevice.h"
 
 #include <cstdint>
 

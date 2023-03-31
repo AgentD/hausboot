@@ -9,20 +9,20 @@
 #include "BIOS/BIOSBlockDevice.h"
 #include "kernel/MultiBootHeader.h"
 #include "kernel/MultiBootInfo.h"
-#include "stage2/Stage2Info.h"
+#include "device/IBlockDevice.h"
+#include "device/TextScreen.h"
 #include "fs/FatDirentLong.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "fs/FatFs.h"
-#include "TextScreen.h"
-#include "IBlockDevice.h"
+#include "Stage2Header.h"
 #include "StringUtil.h"
 #include "pm86.h"
 
 __attribute__ ((section(".header")))
-uint8_t headerBlob[sizeof(Stage2Info)];
-static auto *stage2header = (Stage2Info *)headerBlob;
+uint8_t headerBlob[sizeof(Stage2Header)];
+static auto *stage2header = (Stage2Header *)headerBlob;
 
 static const char *bootConfigName = "BOOT.CFG";
 static constexpr size_t bootConfigMaxSize = 4096;

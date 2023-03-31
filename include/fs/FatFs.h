@@ -7,7 +7,7 @@
 #ifndef FAT_FS_H
 #define FAT_FS_H
 
-#include "IBlockDevice.h"
+#include "device/IBlockDevice.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "StringUtil.h"

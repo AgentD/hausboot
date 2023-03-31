@@ -6,7 +6,7 @@
  */
 #include "kernel/MultiBootInfo.h"
 #include "device/VideoMemory.h"
-#include "TextScreen.h"
+#include "device/TextScreen.h"
 
 extern "C" {
 	void multiboot_main(const MultiBootInfo *info, uint32_t signature);

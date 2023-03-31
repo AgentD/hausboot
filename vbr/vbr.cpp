@@ -4,11 +4,11 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "stage2/Stage2Info.h"
 #include "BIOS/BiosDisk.h"
 #include "BIOS/BIOSTextMode.h"
 #include "part/MBREntry.h"
 #include "fs/FatSuper.h"
+#include "Stage2Header.h"
 
 static const char *msgErrLoad = "Error loading stage 2!";
 static const char *msgErrBroken = "Stage 2 corrupted!";
@@ -39,7 +39,7 @@ void main(BiosDisk disk, const MBREntry *ent)
 	if (!disk.LoadSectors(src, dst, count))
 		DumpMessageAndHang(msgErrLoad);
 
-	auto *hdr = (Stage2Info *)dst;
+	auto *hdr = (Stage2Header *)dst;
 
 	if (!hdr->Verify(count))
 		DumpMessageAndHang(msgErrBroken);

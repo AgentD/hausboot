@@ -5,7 +5,7 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
 	-momit-leaf-frame-pointer -fno-threadsafe-statics
 
-HEADERS := ../include/BIOS/BIOSTextMode.h ../include/stage2/Stage2Info.h \
+HEADERS := ../include/BIOS/BIOSTextMode.h ../include/Stage2Header.h \
 	../include/part/MBREntry.h ../include/part/CHSPacked.h \
 	../include/UnalignedInt.h ../include/FlagField.h \
 	../include/BIOS/BiosDisk.h ../include/fs/FatSuper.h \
@@ -13,10 +13,10 @@ HEADERS := ../include/BIOS/BIOSTextMode.h ../include/stage2/Stage2Info.h \
 	../include/fs/FatDirent.h ../include/fs/FatDirentLong.h \
 	../include/fs/FatFs.h ../include/Memory.h \
 	../include/BIOS/MemoryMap.h ../include/fs/FatName.h \
-	../include/StringUtil.h ../include/IBlockDevice.h \
+	../include/StringUtil.h ../include/device/IBlockDevice.h \
 	../include/BIOS/BIOSBlockDevice.h ../include/pm86.h \
 	../include/kernel/MultiBootHeader.h ../include/kernel/MultiBootInfo.h \
-	../include/kernel/MultiBootMmap.h ../include/TextScreen.h
+	../include/kernel/MultiBootMmap.h ../include/device/TextScreen.h
 
 stage2.bin: stage2.ld abi.o heap.o stage2.o ../lib/BIOS/libBIOS.a \
 	../lib/pm86/libpm86.a ../lib/cxxabi/libcxxabi.a
