@@ -28,7 +28,7 @@
 
 /*
  Multiboot header. Because we are using a flat binary instead of ELF, we
- use manually specify load address and section layout for the boot loader.
+ manually specify load address and section layout for the boot loader.
  */
 .section .mbheader
 	.align 4

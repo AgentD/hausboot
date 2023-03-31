@@ -110,7 +110,7 @@ make runbochs
 ```
 
 With any luck, it might work on your machine as well :-). I have only tested it
-on two Fedora installations so far.
+with Bochs and Qemu on two Fedora installations and an OpenSuSE machine so far.
 
 # Boot Strapping Process
 
@@ -368,8 +368,11 @@ qemu-system-i386 -drive format=raw,file=./disk.img -S -s
 You can then connect to it from within gdb:
 
 ```sh
+$ gdb
+...Dr. Stallman, of MIT, has pointed out that bobbadah bobbadah hoe daddy
+yanga langa furjeezama bing jingle oh yeah...
 (gdb) target remote localhost:1234
-...bla bla bla...
+...bla bla bla...What machine is this? I don't have debug symbols, lol...
 (gdb) set architecture i8086
 The target architecture is set to "i8086".
 (gdb) break *0x7c00
