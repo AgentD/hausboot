@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#include "BIOS/TextScreen.h"
+#include "BIOS/BIOSTextMode.h"
 #include "BIOS/MemoryMap.h"
 #include "BIOS/BIOSBlockDevice.h"
 #include "kernel/MultiBootHeader.h"
@@ -15,6 +15,7 @@
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "fs/FatFs.h"
+#include "TextScreen.h"
 #include "IBlockDevice.h"
 #include "StringUtil.h"
 #include "pm86.h"
@@ -28,7 +29,7 @@ static constexpr size_t bootConfigMaxSize = 4096;
 static constexpr size_t multiBootMaxSearch = 8192;
 static constexpr size_t heapMaxSize = 8192;
 
-static TextScreen screen;
+static TextScreen<BIOSTextMode> screen;
 static MemoryMap<32> mmap;
 static BIOSBlockDevice *part;
 static FatFs *fs;
@@ -36,7 +37,8 @@ static FatFs *fs;
 static bool haveKernel = false;
 static void *kernelEntry = nullptr;
 
-static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
+template<class T>
+static TextScreen<T> &operator<< (TextScreen<T> &s, MemoryMapEntry::MemType type)
 {
 	const char *str = "unknown";
 
@@ -53,7 +55,8 @@ static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 	return s;
 }
 
-static TextScreen &operator<< (TextScreen &s, FatFs::FindResult type)
+template<class T>
+static TextScreen<T> &operator<< (TextScreen<T> &s, FatFs::FindResult type)
 {
 	const char *str = "no such file or directory";
 
@@ -72,14 +75,16 @@ static TextScreen &operator<< (TextScreen &s, FatFs::FindResult type)
 	return s;
 }
 
-static TextScreen &operator<< (TextScreen &s, CHSPacked chs)
+template<class T>
+static TextScreen<T> &operator<< (TextScreen<T> &s, CHSPacked chs)
 {
 	s << chs.Cylinder() << "/" << chs.Head() << "/" << chs.Sector();
 	return s;
 }
 
-static TextScreen &operator<< (TextScreen &s,
-			       const BiosDisk::DriveGeometry &geom)
+template<class T>
+static TextScreen<T> &operator<< (TextScreen<T> &s,
+				  const BiosDisk::DriveGeometry &geom)
 {
 	s << geom.cylinders << "/" << geom.headsPerCylinder << "/"
 	  << geom.sectorsPerTrack;

@@ -6,7 +6,7 @@
  */
 #include "stage2/Stage2Info.h"
 #include "BIOS/BiosDisk.h"
-#include "BIOS/TextScreen.h"
+#include "BIOS/BIOSTextMode.h"
 #include "part/MBREntry.h"
 #include "fs/FatSuper.h"
 

@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: ISC */
 /*
- * TextScreen.h
+ * VideoMemory.h
  *
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
-#ifndef TEXTSCREEN_H
-#define TEXTSCREEN_H
+#ifndef VIDEO_MEMORY_H
+#define VIDEO_MEMORY_H
 
 #include <cstdint>
 
 #include "device/io.h"
 
-class TextScreen {
+class VideoMemory {
 public:
 	enum class Color : uint8_t {
 		Black = 0,
@@ -32,7 +32,7 @@ public:
 		White = 15
 	};
 
-	void Clear() {
+	void Reset() {
 		for (size_t i = 0; i < (80 * 25); ++i) {
 			_vidmem[i].SetColor(_fg, _bg);
 			_vidmem[i].SetChar(' ');
@@ -42,38 +42,51 @@ public:
 		_y = 0;
 	}
 
+	void PutChar(uint8_t c) {
+		if (c == '\r') {
+			_x = 0;
+			SyncCursor();
+			return;
+		}
+
+		if (c == '\n') {
+			_y += 1;
+			if (_y >= _height) {
+				ScrollUp();
+			} else {
+				SyncCursor();
+			}
+			return;
+		}
+
+		if (c == '\t') {
+			auto diff = 8 - (_x % 8);
+			while (diff--)
+				PutChar(' ');
+			return;
+		}
+
+		if (c >= 0x20 && c <= 0x7E) {
+			_vidmem[_y * _width + _x].SetChar(c);
+			_x += 1;
+
+			if (_x >= _width) {
+				_x = 0;
+				_y += 1;
+
+				if (_y >= _height) {
+					ScrollUp();
+					return;
+				}
+			}
+
+			SyncCursor();
+		}
+	}
+
 	void SetColor(Color foreground, Color background) {
 		_fg = foreground;
 		_bg = background;
-	}
-
-	void PutChar(uint8_t c) {
-		if (c >= 0x7F)
-			return;
-
-		if (c >= 0x20) {
-			_vidmem[_y * _width + _x].SetChar(c);
-			_x += 1;
-		} else if (c == '\t') {
-			_x = (_x + 8) & ~0x07;
-		}
-
-		if (_x >= _width || c == '\n') {
-			_x = 0;
-			_y += 1;
-
-			if (_y >= _height) {
-				ScrollUp();
-				return;
-			}
-		}
-
-		SyncCursor();
-	}
-
-	void WriteString(const char *str) {
-		while (*str != '\0')
-			PutChar(*(str++));
 	}
 
 	void ScrollUp() {
@@ -93,32 +106,6 @@ public:
 			_y -= 1;
 
 		SyncCursor();
-	}
-
-	void WriteHex(uint64_t x) {
-		char buffer[sizeof(x) * 2 + 1];
-		char *ptr = buffer + sizeof(buffer) - 1;
-
-		*(ptr--) = '\0';
-
-		for (size_t i = 0; i < (sizeof(x) * 2); ++i) {
-			auto digit = x & 0x0F;
-			*(ptr--) = digit < 10 ? (digit + '0') :
-				(digit - 10 + 'A');
-			x >>= 4;
-		}
-
-		(*this) << (ptr + 1);
-	}
-
-	TextScreen &operator<< (char c) {
-		PutChar(c);
-		return *this;
-	}
-
-	TextScreen &operator<< (const char *str) {
-		WriteString(str);
-		return *this;
 	}
 private:
 	struct VidMemCell {
@@ -154,4 +141,4 @@ private:
 	Color _bg = Color::Black;
 };
 
-#endif /* TEXTSCREEN_H */
+#endif /* VIDEO_MEMORY_H */

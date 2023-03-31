@@ -10,29 +10,31 @@
 #include <cstdint>
 #include <cstddef>
 
+template<class DRIVER>
 class TextScreen {
 public:
-	void Reset() {
-		__asm__ __volatile__("int $0x10" : : "a"(0x0003));
+	void Reset() { _driver.Reset(); }
+	void PutChar(uint8_t c) { _driver.PutChar(c); }
+	auto &Driver() { return _driver; }
+
+	void WriteString(const char *str) {
+		while (*str != '\0')
+			_driver.PutChar(*(str++));
 	}
 
-	void PutChar(uint8_t c) {
-		__asm__ __volatile__("int $0x10" : : "a"(0x0e00 | c), "b"(0));
-	}
-
-	void WriteCharacters(const char *str, size_t count) {
+	void WriteString(const char *str, size_t count) {
 		while (count--) {
-			PutChar(*(str++));
+			_driver.PutChar(*(str++));
 		}
 	}
 
-	void WriteHex(uint32_t x) {
-		char buffer[9];
+	void WriteHex(uint64_t x) {
+		char buffer[sizeof(x) * 2 + 1];
 		char *ptr = buffer + sizeof(buffer) - 1;
 
 		*(ptr--) = '\0';
 
-		for (int i = 0; i < 8; ++i) {
+		for (size_t i = 0; i < (sizeof(buffer) - 1); ++i) {
 			auto digit = x & 0x0F;
 			*(ptr--) = digit < 10 ? (digit + '0') :
 				(digit - 10 + 'A');
@@ -60,19 +62,19 @@ public:
 		}
 	}
 
-	TextScreen &operator<< (const char *str) {
+	auto &operator<< (const char *str) {
 		while (*str != '\0')
 			PutChar(*(str++));
 
 		return *this;
 	}
 
-	TextScreen &operator<< (uint32_t x) {
+	auto &operator<< (uint32_t x) {
 		WriteDecimal(x);
 		return *this;
 	}
 
-	TextScreen &operator<< (int32_t x) {
+	auto &operator<< (int32_t x) {
 		if (x < 0) {
 			PutChar('-');
 			x = -x;
@@ -82,22 +84,12 @@ public:
 		return *this;
 	}
 
-	TextScreen &operator<< (void *ptr) {
+	auto &operator<< (void *ptr) {
 		WriteHex((uint32_t)ptr);
 		return *this;
 	}
+private:
+	DRIVER _driver;
 };
-
-[[noreturn, maybe_unused]] static void DumpMessageAndHang(const char *msg)
-{
-	TextScreen screen;
-
-	screen.Reset();
-	screen << msg;
-
-	for (;;) {
-		__asm__ __volatile__ ("hlt");
-	}
-}
 
 #endif /* TEXT_SCREEN_H */

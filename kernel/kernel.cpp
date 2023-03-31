@@ -5,23 +5,25 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "kernel/MultiBootInfo.h"
-#include "device/TextScreen.h"
+#include "device/VideoMemory.h"
+#include "TextScreen.h"
 
 extern "C" {
 	void multiboot_main(const MultiBootInfo *info, uint32_t signature);
 };
 
-static void PrintMemoryMap(TextScreen &s, const MultiBootInfo *info)
+static void PrintMemoryMap(TextScreen<VideoMemory>& s,
+			   const MultiBootInfo *info)
 {
 	const auto *mmap = info->MemoryMapBegin();
 	const auto *mmapEnd = info->MemoryMapEnd();
 
 	if (mmap == nullptr || mmapEnd == nullptr) {
-		s << "Boot loader did not provide a memory map!\n";
+		s << "Boot loader did not provide a memory map!" << "\r\n";
 		return;
 	}
 
-	s << "Multiboot memory map:\n";
+	s << "Multiboot memory map:" << "\r\n";
 
 	for (; mmap < mmapEnd; mmap = mmap->Next()) {
 		auto start = mmap->BaseAddress();
@@ -40,25 +42,26 @@ static void PrintMemoryMap(TextScreen &s, const MultiBootInfo *info)
 		s.WriteHex(start);
 		s << " | ";
 		s.WriteHex(end);
-		s << '\n';
+		s << "\r\n";
 	}
 }
 
 void multiboot_main(const MultiBootInfo *info, uint32_t signature)
 {
-	TextScreen s;
+	TextScreen<VideoMemory> s;
 
-	s.SetColor(TextScreen::Color::White, TextScreen::Color::Blue);
-	s.Clear();
+	s.Driver().SetColor(VideoMemory::Color::White,
+			    VideoMemory::Color::Blue);
+	s.Reset();
 
-	s << "Hello 32 bit world!\n";
+	s << "Hello 32 bit world!" << "\r\n";
 
 	if (signature != 0x2BADB002) {
-		s << "Multi boot signature is broken!\n";
+		s << "Multi boot signature is broken!" << "\r\n";
 		goto fail;
 	}
 
-	s << "Boot loader name: " << info->BootLoaderName() << '\n';
+	s << "Boot loader name: " << info->BootLoaderName() << "\r\n";
 
 	PrintMemoryMap(s, info);
 fail:
