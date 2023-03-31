@@ -8,6 +8,7 @@
 #include "BIOS/MemoryMap.h"
 #include "BIOS/BIOSBlockDevice.h"
 #include "kernel/MultiBootHeader.h"
+#include "kernel/MultiBootInfo.h"
 #include "stage2/Stage2Info.h"
 #include "fs/FatDirentLong.h"
 #include "fs/FatDirent.h"
@@ -194,6 +195,17 @@ static bool MBLoadKernel(const FatFile &finfo, const MultiBootHeader &hdr,
 	ProtectedModeCall(ClearMemory32, (void *)memStart, hdr.BSSSize());
 	screen << "done" << "\r\n";
 	return true;
+}
+
+static MultiBootInfo *MBGenInfo()
+{
+	auto *info = new MultiBootInfo();
+
+	return info;
+}
+
+extern "C" {
+	void MBTrampoline(void *address, const MultiBootInfo *info);
 }
 
 /*****************************************************************************/
@@ -403,12 +415,14 @@ void main(void *heapPtr)
 	free(fileBuffer);
 
 	// run the kernel
-	if (!haveKernel) {
+	if (haveKernel) {
+		auto *info = MBGenInfo();
+
+		ProtectedModeCall(MBTrampoline, kernelEntry, info);
+	} else {
 		screen << "No kernel loaded!" << "\r\n";
 		goto fail;
 	}
-
-	ProtectedModeCall((void(*)(void))kernelEntry);
 fail:
 	for (;;) {
 		__asm__ volatile("hlt");

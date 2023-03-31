@@ -60,49 +60,49 @@ public:
 		return (const MultiBootMmap *)end;
 	}
 private:
-	FlagField<InfoFlag, uint32_t> _flags;
+	FlagField<InfoFlag, uint32_t> _flags{};
 
-	uint32_t _memLower;
-	uint32_t _memUpper;
+	uint32_t _memLower = 0;
+	uint32_t _memUpper = 0;
 
-	uint32_t _bootDevice;
-	char *_cmdline;
+	uint32_t _bootDevice = 0;
+	char *_cmdline = nullptr;
 
-	uint32_t _modsCount;
-	uint32_t _modsAddr;
+	uint32_t _modsCount = 0;
+	uint32_t _modsAddr = 0;
 
 	uint32_t _syms[4];
 
 	struct {
-		uint32_t length;
-		MultiBootMmap *base;
+		uint32_t length = 0;
+		MultiBootMmap *base = nullptr;
 	} _mmap;
 
-	uint32_t _drivesLength;
-	uint32_t _drivesAddr;
+	uint32_t _drivesLength = 0;
+	uint32_t _drivesAddr = 0;
 
-	uint32_t _configTable;
-	char *_bootLoaderName;
-	uint32_t _apmTable;
+	uint32_t _configTable = 0;
+	char *_bootLoaderName = nullptr;
+	uint32_t _apmTable = 0;
 
 	struct {
-		uint32_t controlInfo;
-		uint32_t modeInfo;
-		uint32_t mode;
+		uint32_t controlInfo = 0;
+		uint32_t modeInfo = 0;
+		uint32_t mode = 0;
 		struct {
-			uint32_t segment;
-			uint32_t offset;
-			uint32_t length;
+			uint32_t segment = 0;
+			uint32_t offset = 0;
+			uint32_t length = 0;
 		} interface;
 	} _vbe;
 
 	struct {
-		uint32_t addr;
-		uint32_t pitch;
-		uint32_t width;
-		uint32_t height;
-		uint32_t bpp;
-		uint32_t type;
+		uint32_t addr = 0;
+		uint32_t pitch = 0;
+		uint32_t width = 0;
+		uint32_t height = 0;
+		uint32_t bpp = 0;
+		uint32_t type = 0;
 	} _framebuffer;
 
 	uint8_t color_info[6];

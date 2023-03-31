@@ -46,6 +46,8 @@
 */
 .section .text
 _start:
+	movl	%eax, %ecx
+
 	movl	$gdt_desc, %eax
 	lgdt	(%eax)
 
@@ -59,6 +61,7 @@ _start:
 	ljmp	$0x08,$.flush
 .flush:
 	movl	$_init_stack_ptr, %esp
+	push	%ecx
 	push	%ebx
 	call	multiboot_main
 

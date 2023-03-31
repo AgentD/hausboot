@@ -18,3 +18,20 @@ _start:
 	add	$1024, %esp
 	pushl	%esp
 	calll	main
+
+
+	.code32
+	.section ".text"
+	.globl	MBTrampoline
+	.type	MBTrampoline, @function
+MBTrampoline:
+	/* first pop the return address, then the kernel entry point */
+	popl	%ecx
+	popl	%ecx
+
+	/* get the info pointer */
+	popl	%ebx
+
+	movl	$0x2BADB002, %eax
+	jmp	*%ecx
+	.size	MBTrampoline, .-MBTrampoline
