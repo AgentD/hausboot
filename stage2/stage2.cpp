@@ -32,6 +32,9 @@ static MemoryMap<32> mmap;
 static BIOSBlockDevice *part;
 static FatFs *fs;
 
+static bool haveKernel = false;
+static void *kernelEntry = nullptr;
+
 static TextScreen &operator<< (TextScreen &s, MemoryMapEntry::MemType type)
 {
 	const char *str = "unknown";
@@ -97,46 +100,6 @@ static bool LoadFileToBuffer(FatFile &f, void *buffer)
 
 /*****************************************************************************/
 
-static bool CmdEcho(const char *line)
-{
-	screen << line << "\r\n";
-	return true;
-}
-
-static bool CmdInfo(const char *what)
-{
-	if (StrEqual(what, "disk")) {
-		auto geom = part->DriveGeometry();
-		auto lba = stage2header->BootMBREntry().StartAddressLBA();
-		auto chs = geom.LBA2CHS(lba);
-
-		screen << "Boot disk: " << "\r\n"
-		       << "    geometry (C/H/S): " << geom << "\r\n"
-		       << "Boot partition: " << "\r\n"
-		       << "    LBA: " << lba << "\r\n"
-		       << "    CHS: " << chs << "\r\n";
-
-		return true;
-	}
-
-	if (StrEqual(what, "memory")) {
-		screen << "Memory:" << "\r\n";
-
-		for (const auto &it : mmap) {
-			screen << "    base: ";
-			screen.WriteHex(it.BaseAddress());
-			screen << ", size: ";
-			screen.WriteHex(it.Size());
-			screen << ", type: " << it.Type() << "\r\n";
-		}
-
-		return true;
-	}
-
-	screen << "Unknown info type: " << what << "\r\n";
-	return false;
-}
-
 static MultiBootHeader *MBFindHeader(const FatFile &finfo, uint32_t &offset)
 {
 	MultiBootHeader *hdr = nullptr;
@@ -184,6 +147,9 @@ static bool MBLoadKernel(const FatFile &finfo, const MultiBootHeader &hdr,
 		return false;
 	}
 
+	// TODO: check if target actually is in high-mem
+	// TODO: check if we have enough memory available there
+
 	// load it into memory
 	screen << "Loading " << count << " bytes to #";
 	screen.WriteHex(memStart);
@@ -230,6 +196,48 @@ static bool MBLoadKernel(const FatFile &finfo, const MultiBootHeader &hdr,
 	return true;
 }
 
+/*****************************************************************************/
+
+static bool CmdEcho(const char *line)
+{
+	screen << line << "\r\n";
+	return true;
+}
+
+static bool CmdInfo(const char *what)
+{
+	if (StrEqual(what, "disk")) {
+		auto geom = part->DriveGeometry();
+		auto lba = stage2header->BootMBREntry().StartAddressLBA();
+		auto chs = geom.LBA2CHS(lba);
+
+		screen << "Boot disk: " << "\r\n"
+		       << "    geometry (C/H/S): " << geom << "\r\n"
+		       << "Boot partition: " << "\r\n"
+		       << "    LBA: " << lba << "\r\n"
+		       << "    CHS: " << chs << "\r\n";
+
+		return true;
+	}
+
+	if (StrEqual(what, "memory")) {
+		screen << "Memory:" << "\r\n";
+
+		for (const auto &it : mmap) {
+			screen << "    base: ";
+			screen.WriteHex(it.BaseAddress());
+			screen << ", size: ";
+			screen.WriteHex(it.Size());
+			screen << ", type: " << it.Type() << "\r\n";
+		}
+
+		return true;
+	}
+
+	screen << "Unknown info type: " << what << "\r\n";
+	return false;
+}
+
 static bool CmdMultiboot(const char *path)
 {
 	FatFile finfo;
@@ -263,8 +271,11 @@ static bool CmdMultiboot(const char *path)
 	if (!MBLoadKernel(finfo, *hdr, offset))
 		return false;
 
-	ProtectedModeCall((void(*)(void))hdr->EntryPoint());
-	return false;
+	haveKernel = true;
+	kernelEntry = hdr->EntryPoint();
+	delete hdr;
+
+	return true;
 }
 
 static const struct {
@@ -389,6 +400,15 @@ void main(void *heapPtr)
 
 	// interpret it
 	RunScript(fileBuffer);
+	free(fileBuffer);
+
+	// run the kernel
+	if (!haveKernel) {
+		screen << "No kernel loaded!" << "\r\n";
+		goto fail;
+	}
+
+	ProtectedModeCall((void(*)(void))kernelEntry);
 fail:
 	for (;;) {
 		__asm__ volatile("hlt");
