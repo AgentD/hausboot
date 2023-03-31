@@ -201,6 +201,8 @@ static MultiBootInfo *MBGenInfo()
 {
 	auto *info = new MultiBootInfo();
 
+	info->SetLoadName("hausboot");
+
 	return info;
 }
 

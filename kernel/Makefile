@@ -7,7 +7,8 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m32 -Wno-main \
 
 HEADERS := ../include/kernel/MultiBootInfo.h ../include/UnalignedInt.h \
 	../include/FlagField.h ../include/BIOS/MemoryMap.h \
-	../include/kernel/MultiBootMmap.h
+	../include/kernel/MultiBootMmap.h ../include/device/io.h \
+	../include/device/TextScreen.h
 
 KRNL386.SYS: kernel.ld kernel.o abi.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

@@ -37,6 +37,11 @@ public:
 		return _bootLoaderName;
 	}
 
+	void SetLoadName(const char *name) {
+		_bootLoaderName = name;
+		_flags.Set(InfoFlag::BootLoaderName);
+	}
+
 	const char *CommandLine() const {
 		if (!_flags.IsSet(InfoFlag::CmdLine))
 			return nullptr;
@@ -82,7 +87,7 @@ private:
 	uint32_t _drivesAddr = 0;
 
 	uint32_t _configTable = 0;
-	char *_bootLoaderName = nullptr;
+	const char *_bootLoaderName = nullptr;
 	uint32_t _apmTable = 0;
 
 	struct {
