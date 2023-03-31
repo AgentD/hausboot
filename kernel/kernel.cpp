@@ -63,6 +63,8 @@ void multiboot_main(const MultiBootInfo *info, uint32_t signature)
 	}
 
 	s << "Boot loader name: " << info->BootLoaderName() << "\r\n";
+	s << "Low memory: " << info->LowMemoryCount() << "k" << "\r\n";
+	s << "High memory: " << info->HighMemoryCount() << "k" << "\r\n";
 
 	PrintMemoryMap(s, info);
 fail:

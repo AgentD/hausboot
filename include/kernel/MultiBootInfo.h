@@ -69,6 +69,27 @@ public:
 		_mmap.base = array;
 		_mmap.length = count * sizeof(array[0]);
 		_flags.Set(InfoFlag::MemMap);
+
+		for (size_t i = 0; i < count; ++i) {
+			if (array[i].Type() != MemoryMapEntry::MemType::Usable)
+				continue;
+			if (array[i].BaseAddress() > 0x0'FFFF'FFFFUL)
+				continue;
+
+			if (array[i].BaseAddress() < 0x0010'0000) {
+				_memLower = array[i].Size() / 1024;
+			} else {
+				_memUpper = array[i].Size() / 1024;
+			}
+		}
+	}
+
+	auto LowMemoryCount() const {
+		return _memLower;
+	}
+
+	auto HighMemoryCount() const {
+		return _memUpper;
 	}
 private:
 	FlagField<InfoFlag, uint32_t> _flags{};
