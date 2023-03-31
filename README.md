@@ -1,11 +1,26 @@
 # About
 
-This repository contains a half-baked attempt at writing a boot loader in C++.
-The VBR and MBR are done, implementing both boot sectors in high level C++ code.
-Currently, the second stage loader only prints a message and hangs.
+"I wrote a bootloader in C++, [I AM A CHAMPION!](https://www.youtube.com/watch?v=j4miM_sZU-k)"
 
-It is *not* intended for any real world use. The name has been chosen to reflect
-the utter impracticality for the supposed purpose.
+The abomination in this repository consists of:
+
+- An MBR boot sector that chain loads a sector form a bootable partition.
+- A VBR (partition boot sector) designed to fit into a FAT32 super block,
+  chain loads a second stage from hidden sectors.
+- A second stage that loads a kernel binary from a FAT32 file system into
+  high memory, enters protected mode with A20 enabled and runs the kernel.
+- A tiny [multiboot compliant](https://en.wikipedia.org/wiki/Multiboot_specification)
+  kernel that prints out some info and then [HALTs](https://www.youtube.com/watch?v=tRgwr_4l6BE).
+
+The MBR & VBR were initially written as a [proof-of-concept](https://www.youtube.com/watch?v=vq7NFBm2oRw)
+and "told you so" to show off that a boot sector could be written in
+what's mostly high-level C++.
+
+The second stage FAT32 kernel loader is the result of [unhealthy obsession
+to see this through](https://www.youtube.com/watch?v=QFKzaXW8_Ek), no matter
+how stupid the whole thing is.
+
+This is *not* intended, nor in any way, shape or form [fit for any real world use](https://www.youtube.com/watch?v=QfN1GRqKXpM).
 
 ## Background
 
@@ -23,9 +38,9 @@ development is *all about* the nookies and crannies of the x86 architecture.
 Instead of learning about scheduling, memory management or filesystems, you
 learn about the intricacies of the protected mode and the A20 gate.
 
-Among other things, you are told that boot loaders are hand written by brave
-men (i.e. not you or me) in assembly. You cannot write a boot sector in C,
-C is too big and FAT. Booting happens [below C level](https://source.denx.de/u-boot/u-boot).
+Among other things, you are told that boot loaders are hand written in assembly.
+You cannot write a boot sector in C, C is too big and FAT. Booting
+happens [below C level](https://source.denx.de/u-boot/u-boot).
 
 Even after many years of C programming, a real eye-opener for me was attending
 a (now sadly discontinued) masters course on compiler construction. Turns out,
@@ -33,22 +48,21 @@ compilers are *really good*. Even my toy optimizing compiler I wrote that
 semester could churn out surprisingly efficient assembly. And I'm pretty sure
 the gcc people are a lot smarter than me, in addition to a 30 year head start.
 
-It changed my way of thinking about programming. Source code should first and
-foremost be written *for people to read*. Source code should convey *high level
-meaning*, both to people, as well as to the compiler. Bit twiddling hacks are
-an utter waste of time and make the job harder for the compiler as well. Keeping
-down asymptotic complexity is your job, optimizing the coefficient is the
-compilers job (but you should really be thinking in terms of data structures
-anyway, rather than algorithms).
+To a degree, it changed my way of thinking about programming. Source code should
+first and foremost be written *for people to read*. Source code should
+convey *high level meaning*, both to people, as well as to the compiler. Bit
+twiddling hacks are an utter waste of time and make the job harder for the
+compiler as well. Keeping down asymptotic complexity is your job, optimizing the
+coefficient is the compilers job (but you should really be thinking in terms of
+data structures anyway, rather than algorithms).
 
-When you use a programming language, you are really using a *formal language*
-based *calculus* to describe that *meaning*. A compiler is essentially a
-term-rewriting system and you are operating with the semantics of that
-*calculus*. Adages like "C is just an assembly pre-processor" are not just
-nonsense, but outright dangerous. The chasm between C semantics and machine
-semantics are what gives rise to fear and misunderstanding around the dreaded
-undefined-behavior-boogy-man that HackerNews loves to share second-hand camp
-fire stories about so much.
+Programming languages really are a *formal language* based *calculus* that
+describes *meaning*. A compiler is essentially a term-rewriting system and you
+are operating with the semantics of that *calculus*. Adages like "C is just an
+assembly pre-processor" are not just nonsense, but outright dangerous. The chasm
+between C semantics and machine semantics are what gives rise to fear and
+misunderstanding around the dreaded undefined-behavior-boogy-man that HN loves
+to gossip about so much.
 
 Pondering further on that, I concluded that an expressive, strong type system
 is really key to expressing such high level meaning and semantics. A modern,
@@ -57,23 +71,20 @@ are really just composite data types in disguise, model them as such and gain
 type safety! I'd go as far as claim that memory-safety issues are themselves
 really just a *symptom* of flaws in the type system.
 
-Revisiting C++ once again, it made me realize that you can model all of those
-high level type semantics really well with classes. Thinking about classes as
-user defined *types* is an immensely powerful concept, and C++ even allows you
-to micro manage memory layout if need be. If leveraged, C++ effectively hands
-you tools of Ada like proportions, you just need to use them.
+**Anyway**, revisiting C++ once again, it made me realize that you can model
+all of those high level type semantics really well with classes. Thinking about
+classes as user defined *types* is an immensely powerful concept, and C++ even
+allows you to micro manage memory layout if need be. If leveraged, C++
+effectively hands you tools of Ada like proportions, you just need to use them.
 
-On the other hand, a lot of criticism I heard about C++ over the years also
-pertained to C++ programs being big, bloated and frivolous resource hogs.
-Particularly from self-declared, "suckless" minimalists who love the write
-broken, crippled and unreadable programs for the sake of pseudo-minimalism.
-This is in part due to past short comings of the STL, in part also brings us
-back to the detour about compiler optimization: Modern compilers are really
-good, you won't believe how good. C++ is a "systems programming language",
-lets go ahaead and implement a *boot sector* in C++, using many of the high
-level concepts I just described.
+Thinking about C++ and compiler construction gave me the shower-thought
+realization that it should absolutely be possible to write a boot sector
+in C++. And after all, C++ is a "systems programming language", right? :-P
 
-It's kills several debates with one stone, and [there might be some bragging rights in being able to pull off such an utter perversion](https://www.youtube.com/watch?v=j4miM_sZU-k).
+I found the idea especially funny, because much of the criticism I heard/read
+about C++ over the years pertained to C++ programs being big, bloated resource
+hogs. Also I found the idea to be an interesting challenge/exercise. Which is
+what brings us here.
 
 ## How to Build This
 
@@ -104,8 +115,8 @@ When you turn on an (legacy BIOS) PC, we are basically transported back to
 the 1980s again. The CPU pretends to be a 16 bit mode 8086 that can address
 up to 1M of memory using segmentation.
 
-After reset, the 8086 starts execution at FFFF:0000, or at linear
-address 0xFFFF0. The IBM PC hardware has a ROM chip mapped at that region
+After reset, the 8086 starts execution at FFFF:0000, or some such, i.e. at
+linear address 0xFFFF0. The IBM PC hardware has a ROM chip mapped at that region
 that contains the BIOS. The lower 640k of address space are left to the
 operating system, including stuff like memory mapped hardware (e.g. video RAM).
 This is called "conventional memory" for some reason (as opposed to
@@ -153,9 +164,9 @@ The volume boot record sits in the first sector of the partition and is
 chain-loaded by the MBR.
 
 It typically shares the sector with the super block of a filesystem. For
-instance, FAT32 uses the first 90 bytes for filesystem information, with
-the first 3 bytes holding a jump instruction, so we don't accidentally
-try to execute the filesystem information.
+instance, FAT32 uses the first 90 bytes for filesystem information. The
+first 3 bytes hold a jump instruction, so we don't accidentally try to
+execute the filesystem information.
 
 Subtracting the super block and 2 byte boot signature, that leaves a FAT32 VBR
 with 420 bytes of payload for a program (6 punched cards).
@@ -170,42 +181,52 @@ If we disable the backup copy and relocate the FS information sector, we can
 max that out to 30 sectors, or a *whopping 15k* for our second stage
 boot loader.
 
-In the `vbr` directory, there is a C++ program that does should fit into
+In the `vbr` directory, there is a C++ program that should fit into
 that 420 byte region, and chain loads the second stage. The `installfat`
-directory contains C++ source for a program that modifies a FAT image as
-described and installs the VBR, as well as the second stage binaries.
+program from the `tools` directory contains C++ source for a program that
+modifies a FAT image as described and installs the VBR, as well as the
+second stage binaries.
 
 ## Second Stage Boot Loader
 
-This has currently not been implemented yet. The binary prints out a dummy
-hello message and halts the system.
+The second stage boot loader has enough breathing space to do some more hardware
+initialization and information gathering (e.g. getting the memory layout and
+enabling the [A20 line](https://en.wikipedia.org/wiki/A20_line)).
 
-What this *would* do is:
+It implements an actual FAT32 reader, reads a config file from disk that tells
+it from where to load the kernel.
 
- - interpret the FS data structures to locate a file containing our OS kernel
- - load that into memory
- - setup environment that the kernel expects
- - execute it
+The kernel is copied to high memory, the BSS is zeroed out, and a multiboot
+information structure is setup up, before finally switching into protected
+mode and calling the kernel.
 
-It would be really cool to actually implement the Linux boot protocol, so we
-could load a Linux kernel with an initramfs image.
+The code for this sits in `stage2`, but once again, most of the magic happens
+in the headers included from `include`. In the `tools` directory, there is a
+program called `fatedit` that can fumble files into a FAT32 image, so we don't
+have to mount the silly thing.
 
-This currently requires more work. The main purpose, showing that a
-boot *sector* can be implemented in C++, is done.
+The FAT32 parser is currently limited to short names only.
+
+The multiboot code is also fairly limited. It does not support parsing ELF files
+and insists that the kernel provides memory layout information instead.
 
 ## The FAT filesystem
 
-The FAT filesystem (**f**latulent, **a**rchaic **t**rash) was the original,
+The FAT (**f**latulent, **a**rchaic **t**rash) filesystem was the original,
 native filesystem for DOS (**d**ead **o**perating **s**ystem) and has over the
 years become the lingua franca of filesystems, supported by practically every
 relevant OS, typically used on external storage media that can be exchanged
 between them. At it's core it is idiotically simple, but full of quirks and
 semi backwards compatible extensions.
 
+For those interested: [Microsoft published a white paper on it](https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/fatgen103.doc)
+
 It mainly consists of a super block and a "file allocation table" that manages
-data *clusters* that make up the rest of the disk. Clusters are basically
-logical data units, indexing starts after the allocation table. Clusters are
-all of the same size, which can be one or more sectors.
+the data blocks on the disk. Because power can fail during writes, there are
+typically 2 of those.
+
+The data blocks are called *clusters*, indexing starts after the allocation
+table (the first one has index 2 for some reason).
 
 Data belonging to a file is stored using a linked list of clusters. The links
 are stored in the allocation table, which is simply an array of cluster indices.
@@ -214,15 +235,14 @@ use that as an index into the array and the value stored there is the index of
 the next cluster where you should continue reading.
 
 There are special sentinel values to indicate that there is no next cluster (the
-one you are holding is the last one). Unused clusters are also marked with a
-special value in the table.
+one you are holding is the last one). Unused clusters are marked with special
+value 0 in the table.
 
-A directory is basically a file that contains a sequence of directory entry
-records, storing an entry name, the first cluster where the entry data begins,
-how big it is and some flags (e.g. this is not a file but actually a directory).
-The super block basically tells us the cluster index of the root directory, so
-we can recursively scan our way through the tree. Because power can fail during
-writes, there are typically 2 of those tables.
+A directory is basically a file that contains a sequence of entry records,
+storing a name, the first cluster where the entry data begins, how big it is,
+and some flags (e.g. this is not a file but actually a directory). The super
+block tells us the cluster index of the root directory, so we can recursively
+scan our way through the tree.
 
 The main difference between FAT12, FAT16 and FAT32 is the number of bits used for
 the cluster indices in the table, i.e. 12, 16 and "28 out of 32" respectively.
@@ -234,16 +254,45 @@ stage boot loader.
 You should note, that you **cannot choose** which FAT type you are using! It
 depends *entirely* on **the number of clusters**. If your disk has up to 4085
 clusters, you are using FAT12, for up to 65525 clusters, you are using FAT16,
-and for higher numbers FAT32. You cannot format a floppy with FAT16 or a 10M
-hard disk with FAT32. What you can do, is dial up the number of sectors per
-cluster to fudge the cluster count below a threshold and use a smaller FAT
-for a bigger disk. Also, you should stay away from those numbers as far as
-possible, because different implementations are broken in different ways.
+and for higher numbers, FAT32.
+
+You cannot format a floppy with FAT16 or a 10M hard disk with FAT32. What you
+can do, is dial up the number of sectors per cluster to fudge the cluster count
+below a threshold and use a *smaller* FAT for a *bigger* disk.
 
 A disk must have *at least* some circa 32M to be FAT32 formatted. With 1 sector
-per cluster, that gives us 65536 clusters. For 4k clusters it would be somewhere
-around 256M. In both cases, you should bump it up a little further tough, to get
-away from the nasty threshold.
+per cluster (giving us 65536 clusters). For 4k clusters it would be somewhere
+around 256M. In both cases, you should bump it up a little further tough. The
+Microsoft spec says, you should stay away from the threshold numbers, because
+different implementations are subtly broken in different ways.
+
+## Multiboot
+
+The Multiboot specificiation is something the GNU people came up with. It
+describes a bootloader-to-kernel binary interface.
+
+The kernel binary contains a header with a magic signature and some flags in
+the first few kilobytes of the file. The boot loader reads it to find out where
+to load the kernel binary to and what extra information it wants. The kernel
+is a 32 bit exectuable, it *can be* an ELF file, or manually specify the file
+layout in the multiboot header.
+
+The boot loader sets up 32 bit protected mode for the kernel, enables the A20
+line and passes a big information structure to the kernel, containing e.g. the
+memory layout, kernel command line or the initrd location in memory.
+
+To get the memory layout, the boot loader would typically use BIOS
+[interrupt 15h, AX=E820](https://en.wikipedia.org/wiki/E820). In fact, the
+multiboot memory map structure is pretty much identical to what this returns,
+except that it tacks on an additional size field.
+
+By the way: The Linux kernel **does not** use multiboot. It has a real-mode
+setup stub that does (among other things) the protected mode and A20 setup.
+It also reads the `E820` memory map on its own.
+
+There is a information structure in the `bzImage` at fixed offset `0x01F1`.
+The boot loader would load the first `N` sectors (wahtever the info struct says)
+to low memory and the rest of the kernel into high-memory.
 
 # Minor Things I Learned Along the Way
 
