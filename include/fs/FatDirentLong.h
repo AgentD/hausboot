@@ -7,7 +7,7 @@
 #ifndef FAT_DIRENT_LONG_H
 #define FAT_DIRENT_LONG_H
 
-#include "FatDirent.h"
+#include "fs/FatDirent.h"
 
 class FatDirentLong {
 public:

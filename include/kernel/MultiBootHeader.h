@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-#include "FlagField.h"
+#include "types/FlagField.h"
 
 class MultiBootHeader {
 public:

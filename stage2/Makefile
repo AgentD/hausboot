@@ -7,9 +7,9 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 
 HEADERS := ../include/BIOS/BIOSTextMode.h ../include/Stage2Header.h \
 	../include/part/MBREntry.h ../include/part/CHSPacked.h \
-	../include/UnalignedInt.h ../include/FlagField.h \
+	../include/types/UnalignedInt.h ../include/types/FlagField.h \
 	../include/BIOS/BiosDisk.h ../include/fs/FatSuper.h \
-	../include/FixedLengthString.h ../include/ByteBlob.h \
+	../include/types/FixedLengthString.h ../include/types/ByteBlob.h \
 	../include/fs/FatDirent.h ../include/fs/FatDirentLong.h \
 	../include/fs/FatFs.h ../include/Memory.h \
 	../include/BIOS/MemoryMap.h ../include/fs/FatName.h \

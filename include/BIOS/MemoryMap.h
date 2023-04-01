@@ -7,7 +7,7 @@
 #ifndef BIOS_MEMORY_MAP_H
 #define BIOS_MEMORY_MAP_H
 
-#include "UnalignedInt.h"
+#include "types/UnalignedInt.h"
 
 #include <cstdint>
 

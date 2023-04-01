@@ -7,7 +7,7 @@
 #ifndef PS2CONTROLLER_H
 #define PS2CONTROLLER_H
 
-#include "FlagField.h"
+#include "types/FlagField.h"
 #include "device/io.h"
 
 class PS2Controller {

@@ -9,8 +9,8 @@
 
 #include <cstdint>
 #include "part/CHSPacked.h"
-#include "UnalignedInt.h"
-#include "FlagField.h"
+#include "types/UnalignedInt.h"
+#include "types/FlagField.h"
 
 class MBREntry {
 public:

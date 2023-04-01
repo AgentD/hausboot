@@ -7,8 +7,8 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 
 HEADERS := ../include/BIOS/BiosDisk.h ../include/BIOS/BIOSTextMode.h \
 	../include/part/MBRTable.h ../include/part/MBREntry.h \
-	../include/part/CHSPacked.h ../include/UnalignedInt.h \
-	../include/FlagField.h
+	../include/part/CHSPacked.h ../include/types/UnalignedInt.h \
+	../include/types/FlagField.h
 
 mbr.bin: mbr.ld abi.o mbr.o
 	$(CXX) $(LDFLAGS) -T $< -o $@ $(filter-out $<,$^)

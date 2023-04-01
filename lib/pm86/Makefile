@@ -5,7 +5,7 @@ CXXFLAGS := -I../../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-momit-leaf-frame-pointer -fno-threadsafe-statics
 
 HEADERS := ../../include/device/PS2Controller.h ../../include/device/io.h \
-	../../include/FlagField.h ../../include/pm86.h
+	../../include/types/FlagField.h ../../include/pm86.h
 
 libpm86.a: pmcall.o a20.o copy.o
 	$(AR) rcs $@ $^

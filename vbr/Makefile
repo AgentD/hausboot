@@ -6,9 +6,9 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m16 -Wno-main \
 	-momit-leaf-frame-pointer -fno-threadsafe-statics
 
 HEADERS := ../include/part/CHSPacked.h ../include/BIOS/BIOSTextMode.h \
-	../include/part/MBREntry.h ../include/UnalignedInt.h \
-	../include/FlagField.h ../include/fs/FatSuper.h \
-	../include/FixedLengthString.h ../include/ByteBlob.h \
+	../include/part/MBREntry.h ../include/types/UnalignedInt.h \
+	../include/types/FlagField.h ../include/fs/FatSuper.h \
+	../include/types/FixedLengthString.h ../include/types/ByteBlob.h \
 	../include/Stage2Header.h ../include/BIOS/BiosDisk.h
 
 vbr.bin: vbr.ld abi.o vbr.o

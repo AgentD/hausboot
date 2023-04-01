@@ -5,8 +5,8 @@ CXXFLAGS := -I../include -std=c++17 -Wall -Wextra -m32 -Wno-main \
 	-ffreestanding -fno-exceptions -fno-rtti -O2 -Os -march=i386 \
 	-momit-leaf-frame-pointer
 
-HEADERS := ../include/kernel/MultiBootInfo.h ../include/UnalignedInt.h \
-	../include/FlagField.h ../include/BIOS/MemoryMap.h \
+HEADERS := ../include/kernel/MultiBootInfo.h ../include/types/UnalignedInt.h \
+	../include/types/FlagField.h ../include/BIOS/MemoryMap.h \
 	../include/kernel/MultiBootMmap.h ../include/device/io.h \
 	../include/device/VideoMemory.h ../include/device/TextScreen.h
 

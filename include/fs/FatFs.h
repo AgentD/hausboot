@@ -8,10 +8,10 @@
 #define FAT_FS_H
 
 #include "device/IBlockDevice.h"
+#include "types/FlagField.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "StringUtil.h"
-#include "FlagField.h"
 #include "Memory.h"
 
 struct FatFile {

@@ -7,9 +7,9 @@
 #ifndef FAT_SUPER_H
 #define FAT_SUPER_H
 
-#include "FixedLengthString.h"
-#include "UnalignedInt.h"
-#include "ByteBlob.h"
+#include "types/FixedLengthString.h"
+#include "types/UnalignedInt.h"
+#include "types/ByteBlob.h"
 
 #include <algorithm>
 #include <cstdint>

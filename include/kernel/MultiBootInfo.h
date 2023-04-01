@@ -10,7 +10,7 @@
 #include <cstdint>
 
 #include "kernel/MultiBootMmap.h"
-#include "FlagField.h"
+#include "types/FlagField.h"
 
 class MultiBootInfo {
 public:

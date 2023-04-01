@@ -5,7 +5,7 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "Memory.h"
-#include "FlagField.h"
+#include "types/FlagField.h"
 
 #include <cstdint>
 

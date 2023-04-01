@@ -9,8 +9,8 @@
 
 #include <cstdint>
 
-#include "FlagField.h"
-#include "UnalignedInt.h"
+#include "types/FlagField.h"
+#include "types/UnalignedInt.h"
 #include "BIOS/MemoryMap.h"
 
 class MultiBootMmap {

@@ -7,8 +7,8 @@
 #ifndef FAT_FS_INFO_H
 #define FAT_FS_INFO_H
 
-#include "UnalignedInt.h"
-#include "ByteBlob.h"
+#include "types/UnalignedInt.h"
+#include "types/ByteBlob.h"
 
 constexpr uint32_t FatFsInfoMagic1 = 0x41615252;
 constexpr uint32_t FatFsInfoMagic2 = 0x61417272;

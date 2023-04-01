@@ -7,10 +7,10 @@
 #ifndef FAT_DIRENT_H
 #define FAT_DIRENT_H
 
-#include "FixedLengthString.h"
-#include "UnalignedInt.h"
-#include "FlagField.h"
-#include "ByteBlob.h"
+#include "types/FixedLengthString.h"
+#include "types/UnalignedInt.h"
+#include "types/FlagField.h"
+#include "types/ByteBlob.h"
 
 class FatDirent {
 public:

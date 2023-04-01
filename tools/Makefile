@@ -1,7 +1,7 @@
 CXXFLAGS := -I../include
 
-HEADERS := ../include/fs/FatSuper.h ../include/FixedLengthString.h \
-	../include/UnalignedInt.h ../include/ByteBlob.h \
+HEADERS := ../include/fs/FatSuper.h ../include/types/FixedLengthString.h \
+	../include/types/UnalignedInt.h ../include/types/ByteBlob.h \
 	../include/Stage2Header.h ../include/part/MBREntry.h \
 	../include/part/CHSPacked.h \
 	../include/fs/FatFsInfo.h ../include/fs/FatDirent.h \
