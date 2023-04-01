@@ -5,12 +5,7 @@
  * Copyright (C) 2023 David Oberhollenzer <goliath@infraroot.at>
  */
 #include "device/PS2Controller.h"
-#include "device/io.h"
-
-enum class SysCtrlPortA : uint8_t {
-	EnableA20 = 0x02,
-	FastReset = 0x01,
-};
+#include "device/SysCtrl.h"
 
 static bool TestA20()
 {
@@ -58,10 +53,9 @@ bool EnableA20()
 		}
 
 		// Try fast A20 enable via system CTRL port A
-		FlagField<SysCtrlPortA, uint8_t> ctrlA(IoReadByte(0x92));
-		ctrlA.Set(SysCtrlPortA::EnableA20);
-		ctrlA.Clear(SysCtrlPortA::FastReset);
-		IoWriteByte(0x92, ctrlA.RawValue());
+		SystemCtrlPort ctrl;
+
+		ctrl.EnableFastA20();
 
 		if (TestA20())
 			return true;
