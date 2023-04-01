@@ -24,7 +24,7 @@ public:
 	}
 
 	void SetSector(uint8_t value) {
-		_mid = value & 0x3F;
+		_mid = (_mid & 0xC0) | (value & 0x3F);
 	}
 
 	uint16_t Cylinder() const {
@@ -32,9 +32,7 @@ public:
 	}
 
 	void SetCylinder(uint16_t value) {
-		_mid &= ~(0xC0);
-		_mid |= (value >> 2) & 0xC0;
-
+		_mid = (_mid & 0x3F) | ((value >> 2) & 0xC0);
 		_hi = value & 0xFF;
 	}
 private:
