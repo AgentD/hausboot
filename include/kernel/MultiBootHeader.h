@@ -20,8 +20,10 @@ public:
 		HaveLayoutInfo = 0x00010000,
 	};
 
+	static constexpr uint32_t Magic = 0x1BADB002;
+
 	bool IsValid() const {
-		return _magic == 0x1BADB002 &&
+		return _magic == Magic &&
 			_checksum == (~(_magic + _flags.RawValue()) + 1);
 	}
 

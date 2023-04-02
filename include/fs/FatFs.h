@@ -53,38 +53,47 @@ public:
 		return out;
 	}
 
-	enum class ScanVerdict {
-		Ok = 0,
-		Error = 1,
-		Stop = 2,
-	};
+	ssize_t ReadAt(const FatFile &finfo, uint8_t *buffer,
+		       uint32_t offset, size_t size) {
+		if (finfo.size > 0) {
+			if (offset >= finfo.size)
+				return 0;
 
-	template<typename FUNCTOR>
-	bool ForEachClusterInChain(uint32_t index, uint32_t size, FUNCTOR cb) {
-		while (size > 0 && index < 0x0FFFFFF0) {
-			uint32_t next;
-
-			if (!LoadDataCluster(index))
-				return false;
-
-			if (!ReadFatIndex(index, next))
-				return false;
-
-			auto diff = BytesPerCluster();
-			if (diff > size)
-				diff = size;
-
-			ScanVerdict verdict = cb((void *)dataWindow, diff);
-			if (verdict == ScanVerdict::Error)
-				return false;
-			if (verdict == ScanVerdict::Stop)
-				break;
-
-			size -= diff;
-			index = next;
+			if (size > (finfo.size - offset))
+				size = (finfo.size - offset);
 		}
 
-		return true;
+		auto cluster = finfo.cluster;
+		ssize_t ret = 0;
+
+		while (size > 0 && cluster < 0x0FFFFFF0) {
+			if (offset < BytesPerCluster()) {
+				if (!LoadDataCluster(cluster))
+					return -1;
+
+				uint32_t diff = BytesPerCluster() - offset;
+				if (diff > size)
+					diff = size;
+
+				for (uint32_t i = 0; i < diff; ++i)
+					*(buffer++) = dataWindow[offset + i];
+
+				offset = 0;
+				size -= diff;
+				ret += diff;
+			} else {
+				offset -= BytesPerCluster();
+			}
+
+			if (size > 0) {
+				uint32_t next;
+				if (!ReadFatIndex(cluster, next))
+					return -1;
+				cluster = next;
+			}
+		}
+
+		return ret;
 	}
 
 	enum class FindResult {

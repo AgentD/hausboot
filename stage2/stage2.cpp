@@ -73,55 +73,46 @@ static TextScreen<T> &operator<< (TextScreen<T> &s,
 	return s;
 }
 
-static bool LoadFileToBuffer(FatFile &f, void *buffer)
-{
-	auto cb = [&buffer](void *data, uint32_t size) {
-		for (uint32_t i = 0; i < size; ++i)
-			((uint8_t *)buffer)[i] = ((uint8_t *)data)[i];
-
-		buffer = (uint8_t *)buffer + size;
-		return FatFs::ScanVerdict::Ok;
-	};
-
-	return fs->ForEachClusterInChain(f.cluster, f.size, cb);
-}
-
 /*****************************************************************************/
 
-static MultiBootHeader *MBFindHeader(const FatFile &finfo, uint32_t &offset)
+static bool MBFindHeader(const FatFile &finfo, uint32_t &offset,
+			 MultiBootHeader &hdr)
 {
-	MultiBootHeader *hdr = nullptr;
-	offset = 0;
-
 	auto scanSize = finfo.size > multiBootMaxSearch ?
 		multiBootMaxSearch : finfo.size;
 
-	if (scanSize >= sizeof(*hdr))
-		scanSize -= sizeof(*hdr);
+	auto *buffer = (uint32_t *)malloc(1024);
+	if (buffer == nullptr) {
+		screen << "out of memory" << "\r\n";
+		return false;
+	}
 
-	auto sarchCb = [&hdr, &offset](void *data, uint32_t size) {
-		if (size >= sizeof(*hdr))
-			size -= sizeof(*hdr);
+	for (offset = 0; offset < scanSize; ) {
+		auto ret = fs->ReadAt(finfo, (uint8_t *)buffer, offset, 1024);
+		if (ret <= 0)
+			goto fail;
 
-		for (uint32_t i = 0; i < (size / 4); ++i) {
-			const auto *tryHdr = (MultiBootHeader *)((uint32_t *)data + i);
+		for (decltype(ret) i = 0; i < (ret / 4); ++i) {
+			if (((uint32_t *)buffer)[i] != MultiBootHeader::Magic)
+				continue;
 
-			if (tryHdr->IsValid()) {
-				hdr = new MultiBootHeader;
-				*hdr = *tryHdr;
-				offset += 4 * i;
-				return FatFs::ScanVerdict::Stop;
+			ret = fs->ReadAt(finfo, (uint8_t *)&hdr,
+					 offset + i * 4, sizeof(hdr));
+			if (ret <= 0)
+				goto fail;
+
+			if (hdr.IsValid()) {
+				offset += i * 4;
+				free(buffer);
+				return true;
 			}
 		}
 
-		offset += size;
-		return FatFs::ScanVerdict::Ok;
-	};
-
-	if (!fs->ForEachClusterInChain(finfo.cluster, scanSize, sarchCb))
-		return nullptr;
-
-	return hdr;
+		offset += ret;
+	}
+fail:
+	free(buffer);
+	return false;
 }
 
 static bool MBLoadKernel(const FatFile &finfo, const MultiBootHeader &hdr,
@@ -143,44 +134,30 @@ static bool MBLoadKernel(const FatFile &finfo, const MultiBootHeader &hdr,
 	screen.WriteHex(memStart);
 	screen << "\r\n";
 
-	uint32_t offset = 0;
-
-	auto loadCb = [&offset, &fileStart,
-		       &memStart, &count](void *data, uint32_t size) {
-		if (offset < fileStart) {
-			auto diff = fileStart - offset;
-			if (size <= diff) {
-				offset += size;
-				return FatFs::ScanVerdict::Ok;
-			}
-
-			offset += diff;
-			data = (char *)data + diff;
-			size -= diff;
-		}
-
-		if (size > count)
-			size = count;
-
-		const auto *dst = (void *)memStart;
-
-		screen << ".";
-
-		ProtectedModeCall(CopyMemory32, dst, data, size);
-
-		memStart += size;
-		count -= size;
-		return count > 0 ? FatFs::ScanVerdict::Ok :
-			FatFs::ScanVerdict::Stop;
-	};
-
-	if (!fs->ForEachClusterInChain(finfo.cluster, finfo.size, loadCb)) {
-		screen << "failed" << "\r\n";
+	uint8_t *buffer = (uint8_t *)malloc(1024);
+	if (buffer == nullptr) {
+		screen << "out of memory" << "\r\n";
 		return false;
 	}
 
+	for (auto offset = fileStart; offset < (count - fileStart); ) {
+		auto ret = fs->ReadAt(finfo, buffer, offset, 1024);
+
+		if (ret == 0)
+			break;
+
+		if (ret < 0)
+			return false;
+
+		ProtectedModeCall(CopyMemory32, (void *)memStart, buffer, ret);
+
+		memStart += ret;
+		offset += ret;
+	}
+
+	free(buffer);
+
 	ProtectedModeCall(ClearMemory32, (void *)memStart, hdr.BSSSize());
-	screen << "done" << "\r\n";
 	return true;
 }
 
@@ -259,32 +236,30 @@ static bool CmdMultiboot(const char *path)
 	}
 
 	uint32_t offset;
+	MultiBootHeader hdr;
 
-	auto *hdr = MBFindHeader(finfo, offset);
-	if (hdr == nullptr) {
+	if (!MBFindHeader(finfo, offset, hdr)) {
 		screen << "Error: " << "No multiboot header found!" << "\r\n";
 		return false;
 	}
 
-	if (hdr->Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
+	if (hdr.Flags().IsSet(MultiBootHeader::KernelFlags::WantVidmode)) {
 		screen << "Error: "
 		       << "video mode info required (unsupported)!" << "\r\n";
 		return false;
 	}
 
-	if (!hdr->Flags().IsSet(MultiBootHeader::KernelFlags::HaveLayoutInfo)) {
+	if (!hdr.Flags().IsSet(MultiBootHeader::KernelFlags::HaveLayoutInfo)) {
 		screen << "Error: "
 		       << "No memory layout provided (unsupported)!" << "\r\n";
 		return false;
 	}
 
-	if (!MBLoadKernel(finfo, *hdr, offset))
+	if (!MBLoadKernel(finfo, hdr, offset))
 		return false;
 
 	haveKernel = true;
-	kernelEntry = hdr->EntryPoint();
-	delete hdr;
-
+	kernelEntry = hdr.EntryPoint();
 	return true;
 }
 
@@ -357,6 +332,7 @@ void main(void *heapPtr)
 	FatFs::FindResult ret;
 	char *fileBuffer;
 	FatFile finfo;
+	ssize_t rdRet;
 
 	// initialization
 	HeapInit(heapPtr, heapMaxSize);
@@ -403,10 +379,13 @@ void main(void *heapPtr)
 	// load it into memory
 	fileBuffer = (char *)malloc(finfo.size + 1);
 
-	if (!LoadFileToBuffer(finfo, fileBuffer))
+	rdRet = fs->ReadAt(finfo, (uint8_t *)fileBuffer, 0, finfo.size);
+	if (rdRet < 0) {
+		screen << "Error loading config file " << "\r\n";
 		goto fail;
+	}
 
-	fileBuffer[finfo.size] = '\0';
+	fileBuffer[rdRet] = '\0';
 
 	// interpret it
 	RunScript(fileBuffer);
