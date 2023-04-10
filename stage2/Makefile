@@ -16,7 +16,8 @@ HEADERS := ../include/BIOS/BIOSTextMode.h ../include/Stage2Header.h \
 	../include/StringUtil.h ../include/device/IBlockDevice.h \
 	../include/BIOS/BIOSBlockDevice.h ../include/pm86.h \
 	../include/kernel/MultiBootHeader.h ../include/kernel/MultiBootInfo.h \
-	../include/kernel/MultiBootMmap.h ../include/device/TextScreen.h
+	../include/kernel/MultiBootMmap.h ../include/device/TextScreen.h \
+	../include/types/UniquePtr.h
 
 stage2.bin: stage2.ld abi.o heap.o stage2.o ../lib/BIOS/libBIOS.a \
 	../lib/pm86/libpm86.a ../lib/cxxabi/libcxxabi.a

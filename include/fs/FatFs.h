@@ -9,10 +9,13 @@
 
 #include "device/IBlockDevice.h"
 #include "types/FlagField.h"
+#include "types/UniquePtr.h"
 #include "fs/FatSuper.h"
 #include "fs/FatName.h"
 #include "StringUtil.h"
 #include "Memory.h"
+
+#include <utility>
 
 struct FatFile {
 	uint32_t cluster;
@@ -24,12 +27,12 @@ class FatFs {
 public:
 	FatFs() = delete;
 
-	FatFs(IBlockDevice *blk, const FatSuper &fsSuper) :
-		_blk(blk), super(fsSuper) {
+	FatFs(UniquePtr<IBlockDevice> blk, const FatSuper &fsSuper) :
+		_blk(std::move(blk)), super(fsSuper) {
 		currentFatSector = 0xFFFFFFFF;
 		currentDataCluster = 0xFFFFFFFF;
 
-		fatWindow = (uint8_t *)malloc(blk->SectorSize());
+		fatWindow = (uint8_t *)malloc(_blk->SectorSize());
 		dataWindow = (uint8_t *)malloc(BytesPerCluster());
 	}
 
@@ -175,6 +178,10 @@ public:
 
 		return FindResult::Ok;
 	}
+
+	const IBlockDevice &BlockDevice() const {
+		return *_blk;
+	}
 private:
 	bool LoadDataCluster(uint32_t index) {
 		if (index < 2)
@@ -222,7 +229,7 @@ private:
 		return true;
 	}
 
-	IBlockDevice *_blk;
+	UniquePtr<IBlockDevice> _blk;
 	uint8_t *fatWindow;
 	uint8_t *dataWindow;
 	const FatSuper &super;

@@ -11,6 +11,7 @@
 #include "kernel/MultiBootInfo.h"
 #include "device/IBlockDevice.h"
 #include "device/TextScreen.h"
+#include "types/UniquePtr.h"
 #include "fs/FatDirentLong.h"
 #include "fs/FatDirent.h"
 #include "fs/FatSuper.h"
@@ -31,8 +32,7 @@ static constexpr size_t heapMaxSize = 8192;
 
 static TextScreen<BIOSTextMode> screen;
 static MemoryMap<32> mmap;
-static BIOSBlockDevice *part;
-static FatFs *fs;
+static UniquePtr<FatFs> fs;
 
 static bool haveKernel = false;
 static void *kernelEntry = nullptr;
@@ -194,7 +194,7 @@ static bool CmdEcho(const char *line)
 static bool CmdInfo(const char *what)
 {
 	if (StrEqual(what, "disk")) {
-		auto geom = part->DriveGeometry();
+		auto geom = ((const BIOSBlockDevice &)fs->BlockDevice()).DriveGeometry();
 		auto lba = stage2header->BootMBREntry().StartAddressLBA();
 		auto chs = geom.LBA2CHS(lba);
 
@@ -339,6 +339,14 @@ void main(void *heapPtr)
 
 	screen.Reset();
 
+	auto part = MakeUnique<BIOSBlockDevice>(stage2header->BiosBootDrive(),
+						stage2header->BootMBREntry().StartAddressLBA());
+
+	if (part == nullptr || !part->IsInitialized()) {
+		screen << "Error initializing FAT partition wrapper!" << "\r\n";
+		goto fail;
+	}
+
 	if (!EnableA20()) {
 		screen << "Error enabling A20 line!" << "\r\n";
 		goto fail;
@@ -349,15 +357,7 @@ void main(void *heapPtr)
 		goto fail;
 	}
 
-	part = new BIOSBlockDevice(stage2header->BiosBootDrive(),
-				   stage2header->BootMBREntry().StartAddressLBA());
-
-	if (part == nullptr || !part->IsInitialized()) {
-		screen << "Error initializing FAT partition wrapper!" << "\r\n";
-		goto fail;
-	}
-
-	fs = new FatFs(part, *((FatSuper *)0x7C00));
+	fs = MakeUnique<FatFs>(std::move(part), *((FatSuper *)0x7C00));
 	if (fs == nullptr) {
 		screen << "Error initializing FAT FS wrapper!" << "\r\n";
 		goto fail;
