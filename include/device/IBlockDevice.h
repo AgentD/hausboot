@@ -11,6 +11,9 @@
 
 class IBlockDevice {
 public:
+	virtual ~IBlockDevice() {
+	}
+
 	virtual bool LoadSector(uint32_t index, void *buffer) = 0;
 
 	virtual uint16_t SectorSize() const = 0;
