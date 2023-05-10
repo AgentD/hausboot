@@ -13,7 +13,11 @@
 static const char *msgErrLoad = "Error loading stage 2!";
 static const char *msgErrBroken = "Stage 2 corrupted!";
 
-void main(BiosDisk disk, const MBREntry *ent)
+extern "C" {
+	void *main(BiosDisk disk, const MBREntry *ent);
+}
+
+void *main(BiosDisk disk, const MBREntry *ent)
 {
 	auto *super = (FatSuper *)0x7c00;
 	MBREntry part = *ent;
@@ -48,5 +52,5 @@ void main(BiosDisk disk, const MBREntry *ent)
 	hdr->SetBiosBootDrive(disk);
 	hdr->SetBootMBREntry(part);
 
-	goto *(dst + sizeof(*hdr));
+	return dst + sizeof(*hdr);
 }

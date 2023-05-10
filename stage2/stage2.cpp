@@ -327,6 +327,10 @@ static void RunScript(char *ptr)
 
 /*****************************************************************************/
 
+extern "C" {
+	void main(void *heapPtr);
+}
+
 void main(void *heapPtr)
 {
 	FatFs::FindResult ret;

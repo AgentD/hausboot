@@ -16,3 +16,4 @@ _start:
 	pushl	%esi
 	pushl	%edx
 	calll	main
+	jmp	*%eax

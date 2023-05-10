@@ -65,7 +65,7 @@ public:
 		int error;
 		__asm__ __volatile__ ("int $0x13\r\n"
 				      "sbb %0,%0"
-				      : "=r"(error), "=cx"(cxOut), "=dx"(dxOut)
+				      : "=r"(error), "=c"(cxOut), "=d"(dxOut)
 				      : "a"(0x0800), "d"(_driveNum),
 					"e"(0), "D"(0)
 				      : "bx");

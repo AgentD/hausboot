@@ -20,6 +20,8 @@ static auto *partTable = (MBRTable *)(0x0600 + 446);
 
 extern "C" {
 	[[noreturn]] void CallVbr(BiosDisk disk, const MBREntry *ent);
+
+	void main(BiosDisk disk);
 }
 
 void main(BiosDisk disk)
