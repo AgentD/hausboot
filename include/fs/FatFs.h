@@ -56,8 +56,8 @@ public:
 		return out;
 	}
 
-	ssize_t ReadAt(const FatFile &finfo, uint8_t *buffer,
-		       uint32_t offset, size_t size) {
+	int32_t ReadAt(const FatFile &finfo, uint8_t *buffer,
+		       uint32_t offset, uint32_t size) {
 		if (finfo.size > 0) {
 			if (offset >= finfo.size)
 				return 0;
@@ -67,7 +67,7 @@ public:
 		}
 
 		auto cluster = finfo.cluster;
-		ssize_t ret = 0;
+		int32_t ret = 0;
 
 		while (size > 0 && cluster < 0x0FFFFFF0) {
 			if (offset < BytesPerCluster()) {

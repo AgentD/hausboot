@@ -336,7 +336,7 @@ void main(void *heapPtr)
 	FatFs::FindResult ret;
 	char *fileBuffer;
 	FatFile finfo;
-	ssize_t rdRet;
+	int32_t rdRet;
 
 	// initialization
 	HeapInit(heapPtr, heapMaxSize);
