@@ -17,43 +17,8 @@ fatpart.img: tools/installfat tools/fatedit \
 	echo "pack kernel/KRNL386.SYS BOOT/KRNL386.SYS" | ./tools/fatedit $@
 	echo "pack boot.cfg BOOT.CFG" | ./tools/fatedit $@
 
-kernel/KRNL386.SYS:
-	$(MAKE) -C kernel
-
-tools/fatedit:
-	$(MAKE) -C tools
-
-tools/installfat:
-	$(MAKE) -C tools
-
-mbr/mbr.bin:
-	$(MAKE) -C mbr
-
-vbr/vbr.bin:
-	$(MAKE) -C vbr
-
-stage2/stage2.bin: lib/BIOS/libBIOS.a lib/pm86/libpm86.a lib/cxxabi/libcxxabi.a
-	$(MAKE) -C stage2
-
-lib/BIOS/libBIOS.a:
-	$(MAKE) -C lib/BIOS
-
-lib/pm86/libpm86.a:
-	$(MAKE) -C lib/pm86
-
-lib/cxxabi/libcxxabi.a:
-	$(MAKE) -C lib/cxxabi
-
 .PHONY: clean
 clean:
-	$(MAKE) -C mbr clean
-	$(MAKE) -C vbr clean
-	$(MAKE) -C stage2 clean
-	$(MAKE) -C tools clean
-	$(MAKE) -C kernel clean
-	$(MAKE) -C lib/BIOS clean
-	$(MAKE) -C lib/pm86 clean
-	$(MAKE) -C lib/cxxabi clean
 	$(RM) *.img
 
 .PHONY: runqemu
