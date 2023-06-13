@@ -279,7 +279,7 @@ describes a bootloader-to-kernel binary interface.
 The kernel binary contains a header with a magic signature and some flags in
 the first few kilobytes of the file. The boot loader reads it to find out where
 to load the kernel binary to and what extra information it wants. The kernel
-is a 32 bit exectuable, it *can be* an ELF file, or manually specify the file
+is a 32 bit executable, it *can be* an ELF file, or manually specify the file
 layout in the multiboot header.
 
 The boot loader sets up 32 bit protected mode for the kernel, enables the A20
@@ -296,7 +296,7 @@ setup stub that does (among other things) the protected mode and A20 setup.
 It also reads the `E820` memory map on its own.
 
 There is a information structure in the `bzImage` at fixed offset `0x01F1`.
-The boot loader would load the first `N` sectors (wahtever the info struct says)
+The boot loader would load the first `N` sectors (whatever the info struct says)
 to low memory and the rest of the kernel into high-memory.
 
 # Minor Things I Learned Along the Way
@@ -345,7 +345,7 @@ funkier stuff:
 I initially had the MBR written in C++ entirely, including the self relocating,
 but ultimately replace the entry/exit code with an assembly stub instead. It
 was very fidgety and relied on the compiler generating *specific* code, e.g.
-not turning an absolute jump to a relative one. This is also, why the reloacing
+not turning an absolute jump to a relative one. This is also, why the reloading
 code couldn't just *call* main either. The compiler would prefer a more
 compact, relative call, or if main was static, just inline it.
 
