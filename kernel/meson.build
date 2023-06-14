@@ -1,4 +1,4 @@
-mbr = executable(
+kernel = executable(
 	'KRNL386',
 	name_suffix: 'SYS',
 	sources: [
