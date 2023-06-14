@@ -96,17 +96,28 @@ what brings us here.
 You need a *very* recent version of g++, as well as the 32 bit version
 of `libstdc++` if you are on x86_64 (if you are on "Apple Silicon": sorry...).
 
-Simply run make, use `make runqemu` to fire up qemu:
+The project uses the [Meson](https://mesonbuild.com/) build system, to compile
+the sources, simply run:
 
 ```sh
-make
-make runqemu
+meson setup ./build
+cd build
+meson compile
 ```
 
-Alternatively, you can try running it in [Bochs](https://en.wikipedia.org/wiki/Bochs):
+A sample disk image, along with a [Bochs](https://en.wikipedia.org/wiki/Bochs)
+config file are generated in `test/` in the build directory.
+
+To run it in bochs simply run:
 
 ```sh
-make runbochs
+bochs -q -f /path/to/bochsrc.txt
+```
+
+Alternatively, you can try running it in Qemu:
+
+```sh
+qemu-system-i386 -drive format=raw,file=/path/to/disk.img
 ```
 
 With any luck, it might work on your machine as well :-). I have only tested it
@@ -345,7 +356,7 @@ funkier stuff:
 I initially had the MBR written in C++ entirely, including the self relocating,
 but ultimately replace the entry/exit code with an assembly stub instead. It
 was very fidgety and relied on the compiler generating *specific* code, e.g.
-not turning an absolute jump to a relative one. This is also, why the reloading
+not turning an absolute jump to a relative one. This is also, why the relocating
 code couldn't just *call* main either. The compiler would prefer a more
 compact, relative call, or if main was static, just inline it.
 
